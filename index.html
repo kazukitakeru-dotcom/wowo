@@ -93,6 +93,22 @@
 </head>
 
 <body>
+  <!-- 引き継ぎ（バックアップ / 復元） -->
+<div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+  <button id="exportBackupBtn" type="button">
+    バックアップを書き出す
+  </button>
+
+  <label>
+    <input id="importBackupInput"
+           type="file"
+           accept="application/json"
+           style="display:none;">
+    <button id="importBackupBtn" type="button">
+      バックアップを読み込む
+    </button>
+  </label>
+</div>
 <header>
   <div>
     <h1>URUOI 水分管理</h1>
@@ -961,6 +977,44 @@
   });
 
 })();
+</script>
+<script>
+  // バックアップを書き出す
+  document.getElementById("exportBackupBtn").onclick = () => {
+    const data = localStorage.getItem("uruoi-data");
+    if (!data) {
+      alert("バックアップするデータがありません");
+      return;
+    }
+
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "uruoi-backup.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  // バックアップを読み込む
+  document.getElementById("importBackupBtn").onclick = () => {
+    document.getElementById("importBackupInput").click();
+  };
+
+  document.getElementById("importBackupInput").onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      localStorage.setItem("uruoi-data", reader.result);
+      alert("引き継ぎ完了。再読み込みしてください。");
+      location.reload();
+    };
+    reader.readAsText(file);
+  };
 </script>
 </body>
 </html>
