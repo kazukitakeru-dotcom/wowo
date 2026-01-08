@@ -1,4 +1,4 @@
-<!doctype html>
+<！doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -275,6 +275,21 @@
               <div class="v" id="calcTotal">-- ml</div>
             </div>
           </div>
+
+          <!-- ★追加：手入力目標 -->
+          <div style="height:10px"></div>
+          <div class="row">
+            <div>
+              <label>目標を手入力 (ml)</label>
+              <input id="manualTargetMl" type="number" inputmode="numeric" min="500" max="10000" step="10" placeholder="例：2300">
+            </div>
+            <button class="primary" id="applyManualTargetToday">手入力を「今日の目標」に適用</button>
+          </div>
+          <div class="hint">
+            ※計算式を使わず、あなたが決めた数値をそのまま今日の目標にします。
+          </div>
+          <!-- ★追加ここまで -->
+
         </section>
 
         <section class="card" style="box-shadow:none">
@@ -904,6 +919,23 @@
     alert("今日の目標を更新しました");
   });
 
+  // ★追加：手入力目標を今日に適用
+  $("applyManualTargetToday").addEventListener("click", () => {
+    const v = clamp($("manualTargetMl").value, 500, 10000);
+    const ml = round10(v);
+
+    const k = dateKeyLocal();
+    const rec = getRecord(k, true);
+    rec.targetMl = ml;
+
+    saveState();
+    viewingDateKey = dateKeyLocal();
+    renderMain();
+
+    alert("手入力の目標を今日に適用しました");
+  });
+  // ★追加ここまで
+
   $("resetProfile").addEventListener("click", () => {
     state.profile = defaultState().profile;
     saveState();
@@ -1018,6 +1050,3 @@
 </script>
 </body>
 </html>
-
-
-
