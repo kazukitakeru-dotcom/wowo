@@ -19,10 +19,15 @@
     *{ box-sizing:border-box; }
     body{ margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
       background: radial-gradient(1200px 800px at 20% 0%, #122040, var(--bg)); color:var(--text); }
-    header{ padding:16px 16px 10px; max-width:980px; margin:0 auto; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
-    header h1{ margin:0; font-size:18px; letter-spacing:.5px; }
-    header .right{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
-    .pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--line); background:var(--chip); color:var(--text); font-size:12px; }
+    
+    /* ヘッダーのスマホ最適化 */
+    header{ padding:12px 12px 8px; max-width:980px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    header h1{ margin:0; font-size:16px; letter-spacing:.5px; white-space:nowrap; }
+    header .right{ display:flex; gap:4px; align-items:center; }
+    header .right button{ padding:6px 8px; font-size:11px; border-radius:8px; white-space:nowrap; }
+    
+    .pill{ display:inline-flex; align-items:center; gap:8px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); background:var(--chip); color:var(--text); font-size:10px; }
+    
     main{ padding:12px 16px 24px; display:grid; gap:12px; max-width:980px; margin:0 auto; }
     .grid{ display:grid; gap:12px; grid-template-columns:1fr; }
     @media (min-width: 900px){ .grid{ grid-template-columns: 1.2fr .8fr; } }
@@ -96,10 +101,9 @@
 <header>
   <div>
     <h1>URUOI 水分管理</h1>
-    <div class="muted">目標を達成して「知識スタンプ」を収集。履歴は「カレンダー」。</div>
   </div>
   <div class="right">
-    <span class="pill">今日：<span class="mono" id="todayStr"></span></span>
+    <span class="pill"><span class="mono" id="todayStr"></span></span>
     <button class="primary" id="openKnowledge">知識</button>
     <button class="primary" id="openHistory">カレンダー</button>
     <button class="primary" id="openSettings">設定</button>
@@ -328,7 +332,7 @@
   </div>
 </div>
 
-<div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; padding: 0 16px;">
+<div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; padding: 0 16px; margin-bottom: 24px;">
   <button id="exportBackupBtn" type="button">バックアップを書き出す</button>
   <label>
     <input id="importBackupInput" type="file" accept="application/json" style="display:none;">
@@ -340,7 +344,7 @@
 (() => {
   const KEY = "uruoi_water_v2";
 
-  // --- Knowledge Data ---
+  // --- Knowledge Data (55 facts) ---
   const KNOWLEDGE_FACTS = [
     { id: 1,  text: "なんとね、成人の6〜7割の人が軽い水不足状態だって言われてるんだ。しかも、ほとんどの人が気づいてないみたい。（※軽度脱水は無自覚が多いと言われています）" },
     { id: 2,  text: "「喉かわいたな〜」って思った時、体はもう軽い脱水状態に入ってるんだって。（※渇きは脱水のサインになりやすいです）" },
@@ -351,11 +355,10 @@
     { id: 7,  text: "水分が足りないと、体はまず“節約モード”に入るんだ。（※血流量や発汗量を抑える反応が起こります）" },
     { id: 8,  text: "年齢を重ねると、喉の渇きを感じにくくなることがあるんだ。（※加齢により渇きの感受性が低下することが知られています）" },
     { id: 9,  text: "水分は一気に摂るより、分けて摂ったほうが体に残りやすいんだ。（※短時間に大量摂取すると排出が早くなりやすいです）" },
-
-    { id: 10, text: "地球の水のほとんどは海にあって、その量は想像以上なんだ。（※地球上の水の約97％は海水です）" },
+    { id: 10, text: "地球の水のほとんどは海にあって、その量は想像以上んだ。（※地球上の水の約97％は海水です）" },
     { id: 11, text: "地球には水がたくさんあるけど、人が使いやすい水はほんのわずかなんだ。（※淡水は全体の約3％で、川や湖などすぐ使える水は0.01％未満と言われています）" },
     { id: 12, text: "淡水の多くは、実は氷として地球に存在しているんだ。（※淡水の約7割は氷河や氷床にあります）" },
-    { id: 13, text: "地下水は、長い時間をかけて地層にたまった水なんだ。（※数十年〜数千年かけて蓄えられたものもあります）" },
+    { id: 13, text: "地下水は、長い時間をかけて地層にたまった水んだ。（※数十年〜数千年かけて蓄えられたものもあります）" },
     { id: 14, text: "ビールやコーヒーも水分ではあるけど、飲んだ分がそのまま体に残るとは限らないんだ。（※アルコールやカフェインには利尿作用があり、摂取量によっては「飲んだ量より多く排出される」こともあります）" },
     { id: 15, text: "尿管結石は、水分不足が続くと発症しやすい、すごく痛い病気んだ。（※「痛い病気ランキング」では上位に挙げられることが多いです）" },
     { id: 16, text: "痛い病気ランキング上位の尿管結石、その一番の対策はこまめな水分補給だよ。（※尿の量を増やすことで、結晶が固まりにくくなります）" },
@@ -365,7 +368,6 @@
     { id: 20, text: "日本で山の水が比較的きれいなのは、森や土がフィルターになってるからなんだ。（※森林は水をろ過し、ゆっくり地中にしみ込ませる働きがあります）" },
     { id: 21, text: "実は、水のもとになった成分は宇宙から来た可能性があるんだ。（※彗星や隕石が地球に水をもたらしたという説があります）" },
     { id: 22, text: "地球上の水の約97％は海水で、重さにすると約1.4×10^21トン（140京トン）にもなるんだ。（※概算）" },
-
     { id: 23, text: "寝ている間も、人は意外と水分を失っているんだ。（※睡眠中の発汗や呼吸で、約300〜500ml失われると言われています）" },
     { id: 24, text: "朝起きたときに体がだるいの、水分不足が原因のこともあるんだよ。（※起床時は体内水分が少なくなりやすいです）" },
     { id: 25, text: "頭痛の原因が、実は水不足だった…ってケースも結構あるんだ。（※軽度脱水が頭痛に関係することがあります）" },
@@ -378,9 +380,8 @@
     { id: 32, text: "水は地球の中で、ずっと姿を変えながら循環してるんだ。（※蒸発→雲→雨→地下水→川→海）" },
     { id: 33, text: "水分が足りないと、血液はドロッとしやすくなるんだ。その結果、体はいつもより疲れやすくなってしまうよ。（※粘度上昇で酸素や栄養が運ばれにくくなることがあります）" },
     { id: 34, text: "体の中で一番、水を必要としている臓器はどこだと思う？答えは「脳」なんだ。（※脳は約75％が水でできています）" },
-    { id: 35, text: "1日に飲む水の目安、実はかなり簡単なんだ。👉 体重×30〜35ml がひとつの目安だよ。（※運動・入浴・暑さで増える）" },
+    { id: 35, text: "1日に飲む水の目安、実はかなり簡単んだ。👉 体重×30〜35ml がひとつの目安だよ。（※運動・入浴・暑さで増える）" },
     { id: 36, text: "地上で一番水を飲む動物、誰だと思う？👉 ゾウなんだ。（※1日に100リットル以上飲むこともあります）" },
-
     { id: 37, text: "トイレの回数、実は水分足りてるかのサインなんだ。（※健康な成人では1日5〜7回程度が目安とされます）" },
     { id: 38, text: "おしっこの色でも、水分状態がだいたい分かるんだよ。（※薄い黄色〜透明寄り＝足りてる、濃い黄色＝不足サイン）" },
     { id: 39, text: "冬も水分補給、実はかなり大事なんだ。（※寒いと渇きを感じにくく、暖房で水分が失われやすい）" },
@@ -397,7 +398,6 @@
     { id: 50, text: "水は、体の中で「運ぶ役」をしているんだ。（※栄養・酸素・老廃物の移動に必須）" },
     { id: 51, text: "体が冷えやすい人、水分不足が関係してることもあるんだ。（※血流が悪くなりやすい）" },
     { id: 52, text: "汗をかく＝毒素が出てる、って思われがちだけど…実は主役は汗じゃないんだ。（※解毒の中心は肝臓と腎臓）" },
-
     { id: 53, text: "サウナは気持ちいいけど、体にとっては「軽い非常事態」なんだ。（※急激な発汗と血圧変動が起こる）" },
     { id: 54, text: "実はお医者さん、サウナを積極的に勧めないことが多いんだよ。（※脱水・低血圧・心臓への負担が理由）" },
     { id: 55, text: "サウナで「スッキリした！」と感じる時、体は必死に耐えてる状態のことがあるんだ。（※リラックスではなくストレス反応の場合も）" },
@@ -515,7 +515,6 @@
     return "badgeBad";
   }
 
-  // --- Knowledge Functions ---
   function awardKnowledgeIfAchieved() {
     const today = dateKeyLocal();
     if (state.knowledge.awardedByDate[today]) return;
@@ -550,12 +549,10 @@
     }
   }
 
-  // ====== State ======
   let state = loadState();
   let viewingDateKey = dateKeyLocal();
   let calYearMonth = (() => { const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
 
-  // ====== DOM Elements ======
   const todayStr = $("todayStr");
   const targetMlEl = $("targetMl");
   const targetSub = $("targetSub");
@@ -689,7 +686,7 @@
   function renderMain(){
     ensureTodayTarget();
     const now = new Date();
-    todayStr.textContent = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
+    todayStr.textContent = `${now.getMonth()+1}/${now.getDate()}`;
     const isToday = (viewingDateKey === dateKeyLocal());
     const rec = getRecord(viewingDateKey, isToday);
 
@@ -788,7 +785,7 @@
         const pct = (rec && target>0) ? Math.round((taken/target)*100) : 0;
         const cell = document.createElement("div");
         cell.className = "calCell" + (inMonth ? "" : " dim") + (key === viewingDateKey ? " selected" : "");
-        cell.innerHTML = `<div class="calDay"><span class="mono">${d.getDate()}</span>${key === dateKeyLocal() ? `<span class="badgeOk mono">今日</span>` : ``}</div><div class="calMeta">${rec ? `<div class="mono">${taken.toLocaleString()} / ${target.toLocaleString()} ml</div><div class="${badgeClass(pct)} mono">${pct}%</div>` : `—`}</div>`;
+        cell.innerHTML = `<div class="calDay"><span class="mono">${d.getDate()}</span></div><div class="calMeta">${rec ? `<div class="mono">${taken.toLocaleString()} ml</div><div class="${badgeClass(pct)} mono">${pct}%</div>` : `—`}</div>`;
         cell.onclick = () => { viewingDateKey = key; renderMain(); buildCalendar(); renderSelectedDay(); };
         row.appendChild(cell);
       }
@@ -813,7 +810,6 @@
     renderLog(rec, selLogBody);
   }
 
-  // --- Modal Events ---
   const toggle = (el, show) => el.classList.toggle("open", show);
   $("openSettings").onclick = () => { applyProfileToSettings(); renderQuickEditor(); toggle(settingsOverlay, true); };
   $("btnEditTarget").onclick = () => { applyProfileToSettings(); renderQuickEditor(); toggle(settingsOverlay, true); };
@@ -848,12 +844,10 @@
   $("nextMonth").onclick = () => { calYearMonth.m++; if(calYearMonth.m>11){calYearMonth.m=0; calYearMonth.y++;} buildCalendar(); };
   $("jumpToday").onclick = () => { viewingDateKey = dateKeyLocal(); calYearMonth = {y:new Date().getFullYear(), m:new Date().getMonth()}; renderMain(); buildCalendar(); renderSelectedDay(); };
 
-  // --- Backup Buttons ---
   $("exportBackupBtn").onclick = () => { const blob = new Blob([localStorage.getItem(KEY)], {type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "uruoi_backup.json"; a.click(); };
   $("importBackupBtn").onclick = () => $("importBackupInput").click();
   $("importBackupInput").onchange = (e) => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => { localStorage.setItem(KEY, r.result); alert("再読み込みします"); location.reload(); }; r.readAsText(f); };
 
-  // Init
   renderQuickButtons();
   renderMain();
   awardKnowledgeIfAchieved();
