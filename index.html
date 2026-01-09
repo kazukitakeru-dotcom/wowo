@@ -13,7 +13,7 @@
     *{ box-sizing:border-box; }
     body{ margin:0; font-family: system-ui, -apple-system, sans-serif;
       background: radial-gradient(1200px 800px at 20% 0%, #122040, var(--bg)); color:var(--text); }
-    header{ padding:16px; max-width:980px; margin:0 auto; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+    header{ padding:16px 16px 10px; max-width:980px; margin:0 auto; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
     header h1{ margin:0; font-size:18px; letter-spacing:.5px; }
     .pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--line); background:var(--chip); color:var(--text); font-size:12px; }
     main{ padding:12px 16px 24px; display:grid; gap:12px; max-width:980px; margin:0 auto; }
@@ -22,7 +22,6 @@
     .card{ background: color-mix(in oklab, var(--card) 92%, black 8%); border:1px solid var(--line); border-radius:14px; padding:14px; }
     .card h2{ margin:0 0 10px; font-size:14px; color:#d9e6ff; display:flex; justify-content:space-between; align-items:center; }
     .big{ font-size:28px; font-weight:800; margin:6px 0 0; }
-    .muted{ color:var(--muted); font-size:12px; }
     .kpi{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }
     .kpi .box{ border:1px solid var(--line); border-radius:12px; background:var(--chip); padding:10px; }
     .bar{ height:12px; border-radius:999px; background:var(--chip); border:1px solid var(--line); overflow:hidden; }
@@ -30,14 +29,16 @@
     .status{ display:flex; justify-content: space-between; align-items:center; margin-top:8px; }
     .btns{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     button{ padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:var(--chip); color:var(--text); cursor:pointer; }
-    button.primary{ background: var(--accent); color: var(--bg); font-weight: bold; border: none; }
-    button.bad{ border-color: var(--bad); color: var(--bad); }
-    input[type="number"]{ width:100px; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--chip); color:var(--text); }
-    table{ width:100%; border-collapse:collapse; font-size:12px; }
-    th, td{ border-bottom:1px solid var(--line); padding:8px 4px; text-align:left; }
+    button.primary{ background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 55%, var(--chip)), var(--chip)); }
+    button.bad{ border-color: var(--bad); }
     .overlay{ position:fixed; inset:0; background: rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; padding:16px; z-index:100; }
     .overlay.open{ display:flex; }
-    .modal{ width:min(600px, 100%); max-height:80vh; overflow:auto; background: var(--card); border-radius:14px; padding:20px; }
+    .modal{ width:min(900px, 100%); max-height:85vh; overflow:auto; background: var(--card); border-radius:14px; padding:20px; border:1px solid var(--line); }
+    table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+    th, td{ border-bottom:1px solid var(--line); padding:8px; text-align:left; }
+    .calGrid{ display:grid; grid-template-columns: repeat(7, 1fr); border:1px solid var(--line); margin-top:10px; }
+    .calCell{ min-height:60px; padding:4px; border:0.5px solid var(--line); background:var(--chip); cursor:pointer; font-size:10px; }
+    .calCell.selected{ outline:2px solid var(--accent); }
     .mono{ font-family: ui-monospace, monospace; }
   </style>
 </head>
@@ -46,11 +47,11 @@
 <header>
   <div>
     <h1>URUOI 水分管理</h1>
-    <div class="muted">合理的な水分補給のための計測。</div>
+    <div id="statusMsg" class="muted">合理的な生命維持。</div>
   </div>
   <div class="btns">
-    <button id="openKnowledge">本</button>
-    <button id="openHistory">履歴</button>
+    <button id="openKnowledge" class="primary">本</button>
+    <button id="openHistory">カレンダー</button>
     <button id="openSettings">設定</button>
   </div>
 </header>
@@ -58,7 +59,7 @@
 <main>
   <div class="grid">
     <section class="card">
-      <h2>今日の進捗 <span class="pill" id="todayStr"></span></h2>
+      <h2>今日の進捗 <span class="pill mono" id="todayStr"></span></h2>
       <div class="big" id="targetMl">-- ml</div>
       <div class="kpi">
         <div class="box"><div class="muted">摂取済み</div><div class="big" style="font-size:20px" id="takenMl">0 ml</div></div>
@@ -66,21 +67,21 @@
       </div>
       <div class="bar"><div id="barFill"></div></div>
       <div class="status">
-        <div id="statusMsg" class="muted">目標を読み込み中...</div>
-        <div class="pill"><span id="pct">0%</span></div>
+        <div class="muted" id="statusDesc">--</div>
+        <div class="pill">達成率 <span id="pct" class="mono">0%</span></div>
       </div>
       <div class="btns" id="quickBtns"></div>
-      <div class="btns">
-        <input id="customAdd" type="number" placeholder="ml">
+      <div class="btns" style="margin-top:15px">
+        <input id="customAdd" type="number" style="width:80px; background:var(--chip); border:1px solid var(--line); color:white; padding:10px; border-radius:10px;" placeholder="ml">
         <button class="primary" id="addCustom">追加</button>
-        <button id="undo">戻す</button>
+        <button id="undo" class="bad">ひとつ戻す</button>
       </div>
     </section>
 
     <section class="card">
       <h2>今日のログ</h2>
       <table id="logTable">
-        <thead><tr><th>時刻</th><th>量</th><th>累計</th></tr></thead>
+        <thead><tr><th>時刻</th><th>量</th><th>合計</th></tr></thead>
         <tbody id="logBody"></tbody>
       </table>
     </section>
@@ -90,14 +91,51 @@
 <div class="overlay" id="knowledgeOverlay">
   <div class="modal">
     <h2>水知識スタンプ <button id="closeKnowledge" style="float:right">閉じる</button></h2>
-    <div class="pill">収集: <span id="stampCount">0</span> / 55</div>
-    <div id="todayStampText" class="card" style="margin:10px 0; background:var(--chip); font-size:13px; line-height:1.6;">
-      目標達成で知識が解放されます。
+    <div class="pill">収集: <span id="stampCount" class="mono">0</span> / 55</div>
+    <div id="todayStampText" class="card" style="margin:15px 0; background:var(--chip); font-size:13px; line-height:1.6; border:1px dashed var(--line);">
+      目標達成で知識がここに表示されます。
     </div>
-    <table>
+    <table style="font-size:11px;">
       <thead><tr><th>#</th><th>内容</th></tr></thead>
       <tbody id="stampList"></tbody>
     </table>
+  </div>
+</div>
+
+<div class="overlay" id="historyOverlay">
+  <div class="modal">
+    <h2>履歴カレンダー <button id="closeHistory" style="float:right">閉じる</button></h2>
+    <div class="btns">
+      <button id="prevMonth">←</button>
+      <span id="calTitle" class="pill mono"></span>
+      <button id="nextMonth">→</button>
+    </div>
+    <div id="calGrid" class="calGrid"></div>
+    <div id="selDetail" style="margin-top:15px;" class="card">
+      <h3 id="selDateLabel" style="font-size:14px;">日付を選択してください</h3>
+      <div id="selStats" class="muted"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <h2>設定 <button id="closeSettings" style="float:right">閉じる</button></h2>
+    <div class="card" style="margin-bottom:10px;">
+      <h3>目標計算</h3>
+      体重(kg): <input id="weight" type="number" value="65" style="width:60px;"> 
+      性別: <select id="sex"><option value="male">男性</option><option value="female">女性</option></select>
+      <div class="btns"><button id="applyTarget" class="primary">計算して今日に適用</button></div>
+    </div>
+    <div class="card">
+      <h3>データ管理</h3>
+      <div class="btns">
+        <button id="exportBackup">バックアップ書出</button>
+        <button id="importBackupBtn">バックアップ読込</button>
+        <input type="file" id="importFile" style="display:none;">
+        <button id="resetAll" class="bad">全データ初期化</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -128,7 +166,7 @@
     { id: 21, text: "地球の水の起源は、宇宙から飛来した彗星や隕石という説が有力です。" },
     { id: 22, text: "地球上の海水の総量は、約140京トンという莫大な重さになります。" },
     { id: 23, text: "睡眠中の呼吸と発汗で、一晩に約300〜500mlの水分が失われます。" },
-    { id: 24, text: "起床時の倦怠感は、睡眠中の水分喪失が原因である場合多いです。" },
+    { id: 24, text: "起床時の倦怠感は、睡眠中の水分喪失が原因である場合が多いです。" },
     { id: 25, text: "軽度の脱水症状として、慢性的な頭痛が現れることがあります。" },
     { id: 26, text: "水分不足は自律神経に影響し、イライラや不安感の一因になります。" },
     { id: 27, text: "脳の約75％は水分で構成されており、脱水に最も敏感な臓器の一つです。" },
@@ -148,7 +186,7 @@
     { id: 41, text: "水分が満たされていると、発汗による体温調節が正常に機能します。" },
     { id: 42, text: "原因不明のだるさは、血流量の減少による軽度脱水の可能性があります。" },
     { id: 43, text: "水分は食物繊維と共に、腸内環境を整え便秘を予防します。" },
-    { id: 44, text: "起床後の一杯の水は、消化器系を刺激し代謝をスイッチオンにします。" },
+    { id: 44, text: "朝の一杯の水は、消化器系を刺激し代謝をスイッチオンにします。" },
     { id: 45, text: "就寝前の少量の給水は、睡眠中の血液の粘度上昇を防ぎます。" },
     { id: 46, text: "習慣的な水分補給は、脳血管性頭痛のリスクを軽減します。" },
     { id: 47, text: "空腹感と喉の渇きは脳内で混同されやすく、水を飲むと空腹感が収まることがあります。" },
@@ -168,28 +206,32 @@
   };
   const SERIES_ORDER = ["A","B","C","D","E","F","G"];
 
+  // --- Core State ---
   let state = JSON.parse(localStorage.getItem(KEY)) || {
-    profile: { weight: 65, sex: "male" },
-    quickAdds: [150, 250, 500],
+    profile: { weight: 65, sex: "male", bathMin: 20 },
+    quickAdds: [150, 250, 350, 500],
     daily: {},
     knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" }
   };
 
   const saveState = () => localStorage.setItem(KEY, JSON.stringify(state));
-  const dateKey = () => new Date().toISOString().split('T')[0];
+  const dateKey = (d = new Date()) => d.toISOString().split('T')[0];
 
-  function getTodayRec() {
-    const k = dateKey();
-    if (!state.daily[k]) state.daily[k] = { targetMl: 2000, entries: [] };
+  function getRec(k = dateKey()) {
+    if (!state.daily[k]) {
+      const coef = (state.profile.sex === "male") ? 35 : 31;
+      state.daily[k] = { targetMl: Math.round(state.profile.weight * coef / 10) * 10, entries: [] };
+    }
     return state.daily[k];
   }
 
   function sumTaken(entries) { return entries.reduce((acc, e) => acc + e.ml, 0); }
 
+  // --- Knowledge Logic ---
   function awardKnowledgeIfAchieved() {
     const today = dateKey();
     if (state.knowledge.awardedByDate[today]) return;
-    const rec = getTodayRec();
+    const rec = getRec();
     const taken = sumTaken(rec.entries);
     if (taken < rec.targetMl) return;
 
@@ -212,13 +254,15 @@
       state.knowledge.awardedByDate[today] = id;
       saveState();
       const fact = KNOWLEDGE_FACTS.find(f => f.id === id);
-      document.getElementById("statusMsg").innerHTML = `🎉 <b>知識#${id}獲得:</b> ${fact.text}`;
-      document.getElementById("statusMsg").style.color = "var(--accent)";
+      const msg = document.getElementById("statusMsg");
+      msg.innerHTML = `🎉 <b>知識#${id}獲得:</b> ${fact.text}`;
+      msg.style.color = "var(--accent)";
     }
   }
 
+  // --- UI Render ---
   function render() {
-    const rec = getTodayRec();
+    const rec = getRec();
     const taken = sumTaken(rec.entries);
     const pct = Math.min(100, Math.round((taken / rec.targetMl) * 100));
     
@@ -228,6 +272,7 @@
     document.getElementById("pct").textContent = `${pct}%`;
     document.getElementById("barFill").style.width = `${pct}%`;
     document.getElementById("todayStr").textContent = dateKey();
+    document.getElementById("statusDesc").textContent = pct >= 100 ? "目標達成。維持してください。" : "こまめな水分補給を。";
 
     const logBody = document.getElementById("logBody");
     logBody.innerHTML = "";
@@ -249,29 +294,87 @@
     });
   }
 
+  // --- Calendar ---
+  let calDate = new Date();
+  function renderCalendar() {
+    const grid = document.getElementById("calGrid");
+    grid.innerHTML = "";
+    const y = calDate.getFullYear(), m = calDate.getMonth();
+    document.getElementById("calTitle").textContent = `${y}年 ${m+1}月`;
+    const firstDay = new Date(y, m, 1).getDay();
+    const lastDay = new Date(y, m + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement("div"));
+    for (let d = 1; d <= lastDay; d++) {
+      const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const rec = state.daily[key];
+      const cell = document.createElement("div");
+      cell.className = "calCell";
+      const taken = rec ? sumTaken(rec.entries) : 0;
+      const target = rec ? rec.targetMl : 0;
+      const p = target ? Math.round(taken/target*100) : 0;
+      cell.innerHTML = `<b>${d}</b><br>${taken > 0 ? p+'%' : ''}`;
+      if (p >= 100) cell.style.color = "var(--good)";
+      cell.onclick = () => {
+        document.getElementById("selDateLabel").textContent = key;
+        document.getElementById("selStats").innerHTML = rec ? `目標: ${target}ml / 摂取: ${taken}ml (${p}%)` : "データなし";
+      };
+      grid.appendChild(cell);
+    }
+  }
+
+  // --- Events ---
   document.getElementById("addCustom").onclick = () => {
     const ml = parseInt(document.getElementById("customAdd").value);
-    if (ml) { getTodayRec().entries.push({t:Date.now(), ml}); saveState(); render(); awardKnowledgeIfAchieved(); }
+    if (ml) { getRec().entries.push({t:Date.now(), ml}); saveState(); render(); awardKnowledgeIfAchieved(); document.getElementById("customAdd").value=""; }
   };
+  document.getElementById("undo").onclick = () => { getRec().entries.pop(); saveState(); render(); };
 
-  document.getElementById("undo").onclick = () => { getTodayRec().entries.pop(); saveState(); render(); };
-
+  // Modal Open/Close
+  const toggle = (id, show) => document.getElementById(id).classList.toggle("open", show);
   document.getElementById("openKnowledge").onclick = () => {
     const k = state.knowledge;
     const todayId = k.awardedByDate[dateKey()];
     document.getElementById("stampCount").textContent = k.unlocked.length;
-    document.getElementById("todayStampText").textContent = todayId ? KNOWLEDGE_FACTS.find(f => f.id === todayId).text : "目標達成で知識解放。";
+    document.getElementById("todayStampText").textContent = todayId ? KNOWLEDGE_FACTS.find(f => f.id === todayId).text : "本日の目標達成で知識解放。";
     const list = document.getElementById("stampList");
     list.innerHTML = "";
     KNOWLEDGE_FACTS.forEach(f => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="mono">#${f.id}</td><td>${k.unlocked.includes(f.id) ? f.text : "？？？"}</td>`;
+      const unlocked = k.unlocked.includes(f.id);
+      tr.innerHTML = `<td class="mono">#${f.id}</td><td style="color:${unlocked?'var(--text)':'var(--muted)'}">${unlocked ? f.text : "？？？"}</td>`;
       list.appendChild(tr);
     });
-    document.getElementById("knowledgeOverlay").classList.add("open");
+    toggle("knowledgeOverlay", true);
+  };
+  document.getElementById("closeKnowledge").onclick = () => toggle("knowledgeOverlay", false);
+  
+  document.getElementById("openHistory").onclick = () => { renderCalendar(); toggle("historyOverlay", true); };
+  document.getElementById("closeHistory").onclick = () => toggle("historyOverlay", false);
+  document.getElementById("prevMonth").onclick = () => { calDate.setMonth(calDate.getMonth()-1); renderCalendar(); };
+  document.getElementById("nextMonth").onclick = () => { calDate.setMonth(calDate.getMonth()+1); renderCalendar(); };
+
+  document.getElementById("openSettings").onclick = () => toggle("settingsOverlay", true);
+  document.getElementById("closeSettings").onclick = () => toggle("settingsOverlay", false);
+  document.getElementById("applyTarget").onclick = () => {
+    state.profile.weight = parseFloat(document.getElementById("weight").value);
+    state.profile.sex = document.getElementById("sex").value;
+    const coef = (state.profile.sex === "male") ? 35 : 31;
+    getRec().targetMl = Math.round(state.profile.weight * coef / 10) * 10;
+    saveState(); render(); toggle("settingsOverlay", false);
   };
 
-  document.getElementById("closeKnowledge").onclick = () => document.getElementById("knowledgeOverlay").classList.remove("open");
+  document.getElementById("exportBackup").onclick = () => {
+    const blob = new Blob([JSON.stringify(state)], {type:"application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "uruoi_backup.json"; a.click();
+  };
+  document.getElementById("importBackupBtn").onclick = () => document.getElementById("importFile").click();
+  document.getElementById("importFile").onchange = (e) => {
+    const reader = new FileReader();
+    reader.onload = () => { state = JSON.parse(reader.result); saveState(); location.reload(); };
+    reader.readAsText(e.target.files[0]);
+  };
+  document.getElementById("resetAll").onclick = () => { if(confirm("全消去します。よろしいですか？")) { localStorage.clear(); location.reload(); }};
 
   // Init
   render();
