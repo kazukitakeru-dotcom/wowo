@@ -3,13 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>URUOI 水分管理 </title>
-  <link rel="apple-touch-icon" href="icon.png">
-<link rel="icon" type="image/png" href="icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="URUOI">
-
+  <title>URUOI 水分管理</title>
   <style>
     :root{
       --bg:#0b0f17; --card:#121a27; --text:#e8eefc; --muted:#9bb0d0; --line:#24324a;
@@ -17,1036 +11,273 @@
       --chip:#0c1322;
     }
     *{ box-sizing:border-box; }
-    body{ margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+    body{ margin:0; font-family: system-ui, -apple-system, sans-serif;
       background: radial-gradient(1200px 800px at 20% 0%, #122040, var(--bg)); color:var(--text); }
-    header{ padding:16px 16px 10px; max-width:980px; margin:0 auto; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+    header{ padding:16px; max-width:980px; margin:0 auto; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
     header h1{ margin:0; font-size:18px; letter-spacing:.5px; }
-    header .right{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
     .pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--line); background:var(--chip); color:var(--text); font-size:12px; }
     main{ padding:12px 16px 24px; display:grid; gap:12px; max-width:980px; margin:0 auto; }
     .grid{ display:grid; gap:12px; grid-template-columns:1fr; }
     @media (min-width: 900px){ .grid{ grid-template-columns: 1.2fr .8fr; } }
-    .card{ background: color-mix(in oklab, var(--card) 92%, black 8%); border:1px solid color-mix(in oklab, var(--line) 85%, white 15%);
-      border-radius:14px; padding:14px; box-shadow: 0 10px 28px rgba(0,0,0,.25); }
-    .card h2{ margin:0 0 10px; font-size:14px; color:#d9e6ff; display:flex; justify-content:space-between; align-items:center; gap:10px; }
-    .muted{ color:var(--muted); font-size:12px; }
+    .card{ background: color-mix(in oklab, var(--card) 92%, black 8%); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .card h2{ margin:0 0 10px; font-size:14px; color:#d9e6ff; display:flex; justify-content:space-between; align-items:center; }
     .big{ font-size:28px; font-weight:800; margin:6px 0 0; }
-    .sub{ color:var(--muted); font-size:12px; margin-top:6px; }
-    .kpi{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .kpi{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }
     .kpi .box{ border:1px solid var(--line); border-radius:12px; background:var(--chip); padding:10px; }
-    .kpi .box .t{ font-size:11px; color:var(--muted); }
-    .kpi .box .v{ font-size:18px; margin-top:4px; font-weight:700; }
     .bar{ height:12px; border-radius:999px; background:var(--chip); border:1px solid var(--line); overflow:hidden; }
-    .bar > div{ height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #a78bfa); }
-    .status{ display:flex; justify-content: space-between; align-items:center; gap:10px; margin-top:8px; }
-    .status .msg{ font-size:12px; color:var(--muted); }
+    .bar > div{ height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #a78bfa); transition: width 0.3s ease; }
+    .status{ display:flex; justify-content: space-between; align-items:center; margin-top:8px; }
     .btns{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     button{ padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:var(--chip); color:var(--text); cursor:pointer; }
-    button:active{ transform: translateY(1px); }
-    button.primary{ background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 55%, var(--chip)), var(--chip));
-      border-color: color-mix(in oklab, var(--accent) 35%, var(--line)); }
-    button.good{ border-color: color-mix(in oklab, var(--good) 35%, var(--line)); }
-    button.warn{ border-color: color-mix(in oklab, var(--warn) 35%, var(--line)); }
-    button.bad{ border-color: color-mix(in oklab, var(--bad) 35%, var(--line)); }
-    button.ghost{ background:transparent; }
-    button:disabled{ opacity:.45; cursor:not-allowed; }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
-    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
-    input, select{ font:inherit; }
-    input[type="number"]{ width:140px; padding:10px 10px; border-radius:10px; border:1px solid var(--line); background:var(--chip); color:var(--text); }
-    input[type="range"]{ width:220px; }
-    select{ padding:10px 10px; border-radius:10px; border:1px solid var(--line); background:var(--chip); color:var(--text); }
-    table{ width:100%; border-collapse:collapse; margin-top:8px; }
-    th, td{ border-bottom:1px solid var(--line); padding:8px 6px; font-size:12px; }
-    th{ text-align:left; color:var(--muted); font-weight:600; }
-    .rightText{ text-align:right; }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Noto Sans Mono", monospace; }
-    .hint{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45; }
-
-    /* Modal */
-    .overlay{ position:fixed; inset:0; background: rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:50; }
+    button.primary{ background: var(--accent); color: var(--bg); font-weight: bold; border: none; }
+    button.bad{ border-color: var(--bad); color: var(--bad); }
+    input[type="number"]{ width:100px; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--chip); color:var(--text); }
+    table{ width:100%; border-collapse:collapse; font-size:12px; }
+    th, td{ border-bottom:1px solid var(--line); padding:8px 4px; text-align:left; }
+    .overlay{ position:fixed; inset:0; background: rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; padding:16px; z-index:100; }
     .overlay.open{ display:flex; }
-    .modal{ width:min(920px, 100%); max-height:min(88vh, 920px); overflow:auto; background: color-mix(in oklab, var(--card) 92%, black 8%);
-      border:1px solid color-mix(in oklab, var(--line) 85%, white 15%); border-radius:14px; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
-    .modalHeader{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); position:sticky; top:0;
-      background: color-mix(in oklab, var(--card) 96%, black 4%); }
-    .modalHeader h3{ margin:0; font-size:14px; }
-    .modalBody{ padding:14px; display:grid; gap:12px; }
-    .twoCol{ display:grid; gap:12px; grid-template-columns:1fr; }
-    @media (min-width: 900px){ .twoCol{ grid-template-columns: 1fr 1fr; } }
-
-    /* Calendar */
-    .calTop{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
-    .calGrid{ margin-top:10px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
-    .calRow{ display:grid; grid-template-columns: repeat(7, 1fr); }
-    .calHead div{ padding:8px 6px; background: #0a1020; border-bottom:1px solid var(--line); font-size:11px; color:var(--muted); text-align:center; }
-    .calCell{ min-height:74px; padding:8px 6px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:var(--chip); cursor:pointer; }
-    .calCell:nth-child(7n){ border-right:none; }
-    .calCell.dim{ opacity:.35; cursor:default; }
-    .calCell.selected{ outline:2px solid color-mix(in oklab, var(--accent) 70%, white 0%); outline-offset:-2px; }
-    .calDay{ font-size:12px; color:#d9e6ff; display:flex; justify-content:space-between; gap:6px; }
-    .calMeta{ margin-top:6px; font-size:11px; color:var(--muted); line-height:1.25; }
-    .badgeOk{ color:var(--good); }
-    .badgeWarn{ color:var(--warn); }
-    .badgeBad{ color:var(--bad); }
+    .modal{ width:min(600px, 100%); max-height:80vh; overflow:auto; background: var(--card); border-radius:14px; padding:20px; }
+    .mono{ font-family: ui-monospace, monospace; }
   </style>
 </head>
+<body>
 
-</body>
-<!-- 引き継ぎ（バックアップ / 復元） -->
-<div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
-  <button id="exportBackupBtn" type="button">
-    バックアップを書き出す
-  </button>
-
-  <label>
-    <input id="importBackupInput"
-           type="file"
-           accept="application/json"
-           style="display:none;">
-    <button id="importBackupBtn" type="button">
-      バックアップを読み込む
-    </button>
-  </label>
-</div>
 <header>
   <div>
     <h1>URUOI 水分管理</h1>
-    <div class="muted">目標は普段は隠して、必要なときだけ「設定」で変更。履歴は「カレンダー」。</div>
+    <div class="muted">合理的な水分補給のための計測。</div>
   </div>
-  <div class="right">
-    <span class="pill">今日：<span class="mono" id="todayStr"></span></span>
-    <button class="primary" id="openHistory">カレンダー</button>
-    <button class="primary" id="openSettings">設定</button>
+  <div class="btns">
+    <button id="openKnowledge">本</button>
+    <button id="openHistory">履歴</button>
+    <button id="openSettings">設定</button>
   </div>
 </header>
 
 <main>
   <div class="grid">
     <section class="card">
-      <h2>
-        <span>今日の目標 / 進捗</span>
-        <button class="ghost" id="btnEditTarget">目標変更</button>
-      </h2>
-
+      <h2>今日の進捗 <span class="pill" id="todayStr"></span></h2>
       <div class="big" id="targetMl">-- ml</div>
-      <div class="sub" id="targetSub">--</div>
-
       <div class="kpi">
-        <div class="box">
-          <div class="t">摂取済み</div>
-          <div class="v" id="takenMl">0 ml</div>
-        </div>
-        <div class="box">
-          <div class="t">残り</div>
-          <div class="v" id="remainMl">-- ml</div>
-        </div>
+        <div class="box"><div class="muted">摂取済み</div><div class="big" style="font-size:20px" id="takenMl">0 ml</div></div>
+        <div class="box"><div class="muted">残り</div><div class="big" style="font-size:20px" id="remainMl">-- ml</div></div>
       </div>
-
-      <div style="height:10px"></div>
       <div class="bar"><div id="barFill"></div></div>
       <div class="status">
-        <div class="msg" id="statusMsg">—</div>
-        <div class="pill"><span>達成率</span><span class="mono" id="pct">0%</span></div>
+        <div id="statusMsg" class="muted">目標を読み込み中...</div>
+        <div class="pill"><span id="pct">0%</span></div>
       </div>
-
       <div class="btns" id="quickBtns"></div>
-
-      <div class="row" style="margin-top:10px">
-        <div>
-          <label>自由入力 (ml)</label>
-          <input id="customAdd" type="number" inputmode="numeric" min="1" max="2000" step="1" placeholder="例：180">
-        </div>
+      <div class="btns">
+        <input id="customAdd" type="number" placeholder="ml">
         <button class="primary" id="addCustom">追加</button>
-        <button class="bad" id="undo">ひとつ戻す</button>
+        <button id="undo">戻す</button>
       </div>
-
-      <div class="btns" style="margin-top:10px">
-        <button id="setTaken0">今日を0にする</button>
-        <button id="exportJson">データを書き出し(JSON)</button>
-        <button id="importJson">データを読み込み(JSON)</button>
-      </div>
-      <input id="importFile" type="file" accept="application/json" style="display:none" />
-
-      <div class="hint" id="modeHint"></div>
     </section>
 
     <section class="card">
       <h2>今日のログ</h2>
-      <table>
-        <thead>
-          <tr><th>時刻</th><th class="rightText">量</th><th class="rightText">合計</th></tr>
-        </thead>
+      <table id="logTable">
+        <thead><tr><th>時刻</th><th>量</th><th>累計</th></tr></thead>
         <tbody id="logBody"></tbody>
       </table>
-      <div class="hint">過去日はカレンダーから選択すると閲覧できます（誤操作防止で追加は不可）。</div>
     </section>
   </div>
-
-  <section class="card">
-    <h2>計算の内訳（今日の目標の分解）</h2>
-    <div class="row">
-      <div class="pill"><span>ベース</span><span class="mono" id="baseMl">--</span></div>
-      <div class="pill"><span>入浴加算</span><span class="mono" id="bathAddMl">--</span></div>
-      <div class="pill"><span>合計</span><span class="mono" id="sumMl">--</span></div>
-    </div>
-    <div class="hint">
-      ベース：体重×係数（男性35 / 女性31 ml/kg）<br>
-      入浴加算：分×回数×(標準10ml/分)×強さ補正（弱0.7 / 標準1.0 / 強1.3）
-    </div>
-  </section>
 </main>
 
-<!-- Settings Modal -->
-<div class="overlay" id="settingsOverlay" aria-hidden="true">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="設定">
-    <div class="modalHeader">
-      <h3>設定（目標計算 / クイックボタン編集）</h3>
-      <div class="btns" style="margin:0">
-        <button id="closeSettings">閉じる</button>
-      </div>
+<div class="overlay" id="knowledgeOverlay">
+  <div class="modal">
+    <h2>水知識スタンプ <button id="closeKnowledge" style="float:right">閉じる</button></h2>
+    <div class="pill">収集: <span id="stampCount">0</span> / 55</div>
+    <div id="todayStampText" class="card" style="margin:10px 0; background:var(--chip); font-size:13px; line-height:1.6;">
+      目標達成で知識が解放されます。
     </div>
-    <div class="modalBody">
-      <div class="twoCol">
-        <section class="card" style="box-shadow:none">
-          <h2>目標の計算</h2>
-          <div class="row">
-            <div>
-              <label>性別</label>
-              <select id="sex">
-                <option value="male">男性</option>
-                <option value="female">女性</option>
-              </select>
-            </div>
-
-            <div>
-              <label>身長 (cm)（今は参考値）</label>
-              <input id="height" type="number" inputmode="numeric" min="120" max="220" step="1" value="170">
-            </div>
-
-            <div>
-              <label>体重 (kg)</label>
-              <input id="weight" type="number" inputmode="numeric" min="30" max="200" step="0.1" value="65">
-            </div>
-          </div>
-
-          <div style="height:10px"></div>
-
-          <div class="row">
-            <div>
-              <label>入浴回数 (回/日)</label>
-              <input id="bathCount" type="number" inputmode="numeric" min="0" max="5" step="1" value="1">
-            </div>
-
-            <div>
-              <label>入浴時間 (分/回)</label>
-              <input id="bathMin" type="number" inputmode="numeric" min="0" max="180" step="1" value="20">
-            </div>
-
-            <div style="min-width: 260px;">
-              <label>入浴の強さ</label>
-              <input id="bathIntensity" type="range" min="0" max="2" step="1" value="1">
-              <div class="muted" id="bathIntensityLabel">標準</div>
-            </div>
-          </div>
-
-          <div class="hint">
-            「今日の目標」はここで計算した値を <b>適用</b> したときだけ変わります。普段の入力変更では勝手に目標を動かしません。
-          </div>
-
-          <div class="btns">
-            <button class="primary" id="applyTargetToday">計算結果を「今日の目標」に適用</button>
-            <button id="resetProfile">入力を初期化</button>
-          </div>
-
-          <div class="kpi">
-            <div class="box">
-              <div class="t">計算：ベース</div>
-              <div class="v" id="calcBase">-- ml</div>
-            </div>
-            <div class="box">
-              <div class="t">計算：入浴加算</div>
-              <div class="v" id="calcBath">-- ml</div>
-            </div>
-          </div>
-          <div class="kpi">
-            <div class="box" style="grid-column:1 / -1">
-              <div class="t">計算：合計（= 適用される目標）</div>
-              <div class="v" id="calcTotal">-- ml</div>
-            </div>
-          </div>
-
-          <!-- ★追加：手入力目標 -->
-          <div style="height:10px"></div>
-          <div class="row">
-            <div>
-              <label>目標を手入力 (ml)</label>
-              <input id="manualTargetMl" type="number" inputmode="numeric" min="500" max="10000" step="10" placeholder="例：2300">
-            </div>
-            <button class="primary" id="applyManualTargetToday">手入力を「今日の目標」に適用</button>
-          </div>
-          <div class="hint">
-            ※計算式を使わず、あなたが決めた数値をそのまま今日の目標にします。
-          </div>
-          <!-- ★追加ここまで -->
-
-        </section>
-
-        <section class="card" style="box-shadow:none">
-          <h2>クイックボタン</h2>
-          <div class="hint">
-            ボタンの数値はここで編集します（通常画面では編集不可＝誤操作防止）。
-          </div>
-
-          <div class="row" id="quickEditRow"></div>
-
-          <div class="btns">
-            <button class="primary" id="saveQuick">クイックボタンを保存</button>
-            <button id="resetQuick">初期値に戻す</button>
-          </div>
-
-          <div class="hint">
-            目安：150〜500mlあたりを好みで。大きすぎる値にすると入力ミスが痛いので注意。
-          </div>
-        </section>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- History Modal -->
-<div class="overlay" id="historyOverlay" aria-hidden="true">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="カレンダー">
-    <div class="modalHeader">
-      <h3>カレンダー（履歴）</h3>
-      <div class="btns" style="margin:0">
-        <button id="closeHistory">閉じる</button>
-      </div>
-    </div>
-
-    <div class="modalBody">
-      <div class="card" style="box-shadow:none">
-        <div class="calTop">
-          <div class="row" style="margin:0">
-            <button id="prevMonth">←</button>
-            <div class="pill"><span class="mono" id="calTitle">----</span></div>
-            <button id="nextMonth">→</button>
-            <button id="jumpToday" class="primary">今日へ</button>
-          </div>
-          <div class="muted">日を押すと、その日の合計とログを表示します。</div>
-        </div>
-
-        <div class="calGrid" id="calGrid"></div>
-
-        <div class="card" style="box-shadow:none; margin-top:12px">
-          <h2>
-            <span>選択日：<span class="mono" id="selDate">----</span></span>
-            <span class="muted" id="selMode"></span>
-          </h2>
-          <div class="row">
-            <div class="pill"><span>目標</span><span class="mono" id="selTarget">--</span></div>
-            <div class="pill"><span>摂取</span><span class="mono" id="selTaken">--</span></div>
-            <div class="pill"><span>達成率</span><span class="mono" id="selPct">--</span></div>
-          </div>
-
-          <table style="margin-top:10px">
-            <thead>
-              <tr><th>時刻</th><th class="rightText">量</th><th class="rightText">合計</th></tr>
-            </thead>
-            <tbody id="selLogBody"></tbody>
-          </table>
-
-          <div class="hint">※過去日の記録を直接いじる機能は付けてない（誤操作防止）。必要なら後から付けられる。</div>
-        </div>
-      </div>
-    </div>
+    <table>
+      <thead><tr><th>#</th><th>内容</th></tr></thead>
+      <tbody id="stampList"></tbody>
+    </table>
   </div>
 </div>
 
 <script>
 (() => {
   const KEY = "uruoi_water_v2";
+  const KNOWLEDGE_FACTS = [
+    { id: 1,  text: "成人の6〜7割が自覚のない水不足状態にあると言われています。" },
+    { id: 2,  text: "「喉が渇いた」と感じた時点で、体はすでに脱水が始まっています。" },
+    { id: 3,  text: "呼吸や皮膚からの蒸発だけで、1日約500ml以上の水分が失われます。" },
+    { id: 4,  text: "体重の1〜2%の水分不足で、集中力や判断力が低下し始めます。" },
+    { id: 5,  text: "汗をかかない季節でも、呼気などから水分は失われ続けています。" },
+    { id: 6,  text: "慢性的な軽度脱水は、体が慣れてしまい自覚症状が出にくいのが特徴です。" },
+    { id: 7,  text: "水分が足りないと、体は血流量や発汗量を抑える節約モードに入ります。" },
+    { id: 8,  text: "加齢により、脳の渇きを感じるセンサーの感度が低下することがあります。" },
+    { id: 9,  text: "一度に大量に飲むより、小分けに飲む方が吸収効率が良いです。" },
+    { id: 10, text: "地球上の水の約97％は海水です。" },
+    { id: 11, text: "人が利用可能な淡水は、地球全体の水の0.01％未満しかありません。" },
+    { id: 12, text: "淡水の約7割は氷河として存在しており、液体として存在するのは稀です。" },
+    { id: 13, text: "地下水は、数十年から数千年かけて地層に蓄えられた貴重な資源です。" },
+    { id: 14, text: "アルコールやカフェインには利尿作用があり、摂取量以上の排出を招くことがあります。" },
+    { id: 15, text: "尿管結石の最大の予防法は、十分な水分補給で尿を薄めることです。" },
+    { id: 16, text: "結石は水分不足で尿が濃縮されると結晶化しやすくなります。" },
+    { id: 17, text: "地表の川や湖よりも、地下に眠る水の方が圧倒的に量が多いです。" },
+    { id: 18, text: "淡水の中で川や湖などの地表水が占める割合は1％未満です。" },
+    { id: 19, text: "日本は地形と降水量に恵まれ、天然のろ過システムが機能している国です。" },
+    { id: 20, text: "森林は「緑のダム」と呼ばれ、雨水を浄化し蓄える機能を持っています。" },
+    { id: 21, text: "地球の水の起源は、宇宙から飛来した彗星や隕石という説が有力です。" },
+    { id: 22, text: "地球上の海水の総量は、約140京トンという莫大な重さになります。" },
+    { id: 23, text: "睡眠中の呼吸と発汗で、一晩に約300〜500mlの水分が失われます。" },
+    { id: 24, text: "起床時の倦怠感は、睡眠中の水分喪失が原因である場合多いです。" },
+    { id: 25, text: "軽度の脱水症状として、慢性的な頭痛が現れることがあります。" },
+    { id: 26, text: "水分不足は自律神経に影響し、イライラや不安感の一因になります。" },
+    { id: 27, text: "脳の約75％は水分で構成されており、脱水に最も敏感な臓器の一つです。" },
+    { id: 28, text: "人間の成人の体は約60％が水分でできています。" },
+    { id: 29, text: "乳幼児の体は約70％以上が水分で、脱水のリスクが大人より高いです。" },
+    { id: 30, text: "人間は水がなければ、通常3日程度しか生存できないとされています。" },
+    { id: 31, text: "大雨の際、日本列島全体に降る水の重さは数億トン単位になります。" },
+    { id: 32, text: "水は蒸発・降雨・循環を繰り返し、数億年前から地球上を巡っています。" },
+    { id: 33, text: "水分不足で血液の粘度が上がると、酸素の運搬効率が下がり疲労感が増します。" },
+    { id: 34, text: "脳はわずか2%の水分不足でも、認知機能に支障をきたします。" },
+    { id: 35, text: "1日の給水目安は、一般的に「体重(kg) × 35ml」とされています。" },
+    { id: 36, text: "ゾウは1日に約100リットル以上の水を摂取します。" },
+    { id: 37, text: "成人の健康な排尿回数は、1日5〜7回程度が目安です。" },
+    { id: 38, text: "尿の色が濃い黄色の場合、体内の水分が不足しているサインです。" },
+    { id: 39, text: "冬場は空気の乾燥と暖房により、無自覚な脱水が起きやすい季節です。" },
+    { id: 40, text: "発熱時は呼吸数が増え、通常時よりも多くの水分が失われます。" },
+    { id: 41, text: "水分が満たされていると、発汗による体温調節が正常に機能します。" },
+    { id: 42, text: "原因不明のだるさは、血流量の減少による軽度脱水の可能性があります。" },
+    { id: 43, text: "水分は食物繊維と共に、腸内環境を整え便秘を予防します。" },
+    { id: 44, text: "起床後の一杯の水は、消化器系を刺激し代謝をスイッチオンにします。" },
+    { id: 45, text: "就寝前の少量の給水は、睡眠中の血液の粘度上昇を防ぎます。" },
+    { id: 46, text: "習慣的な水分補給は、脳血管性頭痛のリスクを軽減します。" },
+    { id: 47, text: "空腹感と喉の渇きは脳内で混同されやすく、水を飲むと空腹感が収まることがあります。" },
+    { id: 48, text: "十分な循環血流量は、血圧の急激な変動を安定させる助けになります。" },
+    { id: 49, text: "水分不足は、運転時のミスや反応速度の低下に直結することが研究で示されています。" },
+    { id: 50, text: "水は栄養素や老廃物を運搬する、体内最大のトランスポートシステムです。" },
+    { id: 51, text: "冷え性の原因の一つに、水分不足による末梢血流の悪化があります。" },
+    { id: 52, text: "デトックス（解毒）の主役は汗ではなく、腎臓での尿生成と肝臓の機能です。" },
+    { id: 53, text: "サウナによる急激な発汗は、体に強いストレス負荷をかける「非常事態」です。" },
+    { id: 54, text: "医学的には、過度なサウナ利用は脱水や血圧変動のリスクが懸念されます。" },
+    { id: 55, text: "サウナの「整う」感覚は、極限状態からの解放による脳内麻薬的反応の側面があります。" }
+  ];
 
-  const defaultState = () => ({
-    profile: { sex:"male", height:170, weight:65, bathCount:1, bathMin:20, bathIntensity:1 },
-    quickAdds: [150, 200, 250, 350, 500],
-    daily: {
-      // "YYYY-MM-DD": { targetMl:number, entries:[{t:number, ml:number}] }
-    }
-  });
+  const KNOWLEDGE_SERIES = {
+    A: [1,2,3,5,6,7,8,9], B: [4,27,34,49], C: [23,24,44,45],
+    D: [37,38], E: [15,16], F: [10,11,12,17,18,13,22], G: [53,54,55]
+  };
+  const SERIES_ORDER = ["A","B","C","D","E","F","G"];
 
-  const $ = (id) => document.getElementById(id);
+  let state = JSON.parse(localStorage.getItem(KEY)) || {
+    profile: { weight: 65, sex: "male" },
+    quickAdds: [150, 250, 500],
+    daily: {},
+    knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" }
+  };
 
-  function loadState(){
-    try{
-      const raw = localStorage.getItem(KEY);
-      if(!raw) return defaultState();
-      const s = JSON.parse(raw);
-      if(!s.profile) s.profile = defaultState().profile;
-      if(!Array.isArray(s.quickAdds)) s.quickAdds = defaultState().quickAdds;
-      if(!s.daily) s.daily = {};
-      return s;
-    }catch{
-      return defaultState();
-    }
-  }
-  function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+  const saveState = () => localStorage.setItem(KEY, JSON.stringify(state));
+  const dateKey = () => new Date().toISOString().split('T')[0];
 
-  function dateKeyLocal(d=new Date()){
-    const y=d.getFullYear();
-    const m=String(d.getMonth()+1).padStart(2,"0");
-    const day=String(d.getDate()).padStart(2,"0");
-    return `${y}-${m}-${day}`;
-  }
-  function parseDateKey(k){
-    const [y,m,d] = k.split("-").map(Number);
-    return new Date(y, m-1, d);
-  }
-  function fmtYMD(k){
-    const d = parseDateKey(k);
-    return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
-  }
-  function formatTime(ts){
-    const d=new Date(ts);
-    const hh=String(d.getHours()).padStart(2,"0");
-    const mm=String(d.getMinutes()).padStart(2,"0");
-    return `${hh}:${mm}`;
-  }
-  function clamp(n,min,max){
-    n=Number(n);
-    if(Number.isNaN(n)) return min;
-    return Math.max(min, Math.min(max, n));
-  }
-  function round10(n){ return Math.round(n/10)*10; }
-  function intensityFactor(v){
-    v=Number(v);
-    if(v===0) return 0.7;
-    if(v===2) return 1.3;
-    return 1.0;
-  }
-  function intensityLabel(v){
-    v=Number(v);
-    if(v===0) return "弱い（汗少なめ）";
-    if(v===2) return "強い（汗多め）";
-    return "標準";
-  }
-  function cupsFromMl(ml){ return ml/200; }
-
-  function computeTarget(profile){
-    const w = clamp(profile.weight, 30, 200);
-    const coef = (profile.sex === "male") ? 35 : 31;
-    const base = w * coef;
-
-    const cnt = clamp(profile.bathCount, 0, 5);
-    const min = clamp(profile.bathMin, 0, 180);
-    const inten = clamp(profile.bathIntensity, 0, 2);
-    const bath = cnt * min * 10 * intensityFactor(inten);
-
-    return {
-      baseMl: round10(base),
-      bathAddMl: round10(bath),
-      totalMl: round10(base + bath)
-    };
-  }
-
-  function getRecord(k, create=false){
-    if(!state.daily[k]){
-      if(!create) return null;
-      state.daily[k] = { targetMl: null, entries: [] };
-    }
+  function getTodayRec() {
+    const k = dateKey();
+    if (!state.daily[k]) state.daily[k] = { targetMl: 2000, entries: [] };
     return state.daily[k];
   }
-  function sumTaken(entries){
-    let t=0;
-    for(const e of entries) t += e.ml;
-    return t;
-  }
-  function statusText(taken, target){
-    if(!target || target<=0) return "目標が未設定です（設定から適用してね）";
-    const ratio = taken/target;
-    if(ratio>=1.0) return "達成。飲みすぎにならない範囲でOK。";
-    if(ratio>=0.7) return "あと少し。こまめに。";
-    if(ratio>=0.4) return "半分手前。ペース上げてもいい。";
-    return "序盤。少量を回数で。";
-  }
-  function badgeClass(pct){
-    if(pct>=100) return "badgeOk";
-    if(pct>=70) return "badgeWarn";
-    return "badgeBad";
-  }
 
-  // ====== State ======
-  let state = loadState();
-  let viewingDateKey = dateKeyLocal(); // 画面で見ている日（基本は今日）
-  let calYearMonth = (() => { const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })(); // m:0-11
+  function sumTaken(entries) { return entries.reduce((acc, e) => acc + e.ml, 0); }
 
-  // ====== Main DOM ======
-  const todayStr = $("todayStr");
-  const targetMlEl = $("targetMl");
-  const targetSub = $("targetSub");
-  const takenMlEl = $("takenMl");
-  const remainMlEl = $("remainMl");
-  const pctEl = $("pct");
-  const barFill = $("barFill");
-  const statusMsg = $("statusMsg");
-  const logBody = $("logBody");
-  const quickBtns = $("quickBtns");
-  const customAdd = $("customAdd");
-  const modeHint = $("modeHint");
+  function awardKnowledgeIfAchieved() {
+    const today = dateKey();
+    if (state.knowledge.awardedByDate[today]) return;
+    const rec = getTodayRec();
+    const taken = sumTaken(rec.entries);
+    if (taken < rec.targetMl) return;
 
-  // breakdown
-  const baseMlEl = $("baseMl");
-  const bathAddMlEl = $("bathAddMl");
-  const sumMlEl = $("sumMl");
-
-  // ====== Settings Modal DOM ======
-  const settingsOverlay = $("settingsOverlay");
-  const sex = $("sex");
-  const height = $("height");
-  const weight = $("weight");
-  const bathCount = $("bathCount");
-  const bathMin = $("bathMin");
-  const bathIntensity = $("bathIntensity");
-  const bathIntensityLabelEl = $("bathIntensityLabel");
-
-  const calcBase = $("calcBase");
-  const calcBath = $("calcBath");
-  const calcTotal = $("calcTotal");
-
-  const quickEditRow = $("quickEditRow");
-
-  // ====== History Modal DOM ======
-  const historyOverlay = $("historyOverlay");
-  const calTitle = $("calTitle");
-  const calGrid = $("calGrid");
-  const selDate = $("selDate");
-  const selMode = $("selMode");
-  const selTarget = $("selTarget");
-  const selTaken = $("selTaken");
-  const selPct = $("selPct");
-  const selLogBody = $("selLogBody");
-
-  function ensureTodayTarget(){
-    const k = dateKeyLocal();
-    const rec = getRecord(k, true);
-    if(typeof rec.targetMl !== "number" || rec.targetMl<=0){
-      const c = computeTarget(state.profile);
-      rec.targetMl = c.totalMl;
+    let id = null;
+    for (let s of SERIES_ORDER) {
+      const arr = KNOWLEDGE_SERIES[s];
+      let idx = state.knowledge.seriesIndex[s] || 0;
+      while (idx < arr.length && state.knowledge.unlocked.includes(arr[idx])) idx++;
+      if (idx < arr.length) {
+        id = arr[idx];
+        state.knowledge.seriesIndex[s] = idx + 1;
+        state.knowledge.activeSeries = s;
+        break;
+      }
+    }
+    if (!id) id = KNOWLEDGE_FACTS.map(f => f.id).find(i => !state.knowledge.unlocked.includes(i));
+    
+    if (id) {
+      state.knowledge.unlocked.push(id);
+      state.knowledge.awardedByDate[today] = id;
       saveState();
+      const fact = KNOWLEDGE_FACTS.find(f => f.id === id);
+      document.getElementById("statusMsg").innerHTML = `🎉 <b>知識#${id}獲得:</b> ${fact.text}`;
+      document.getElementById("statusMsg").style.color = "var(--accent)";
     }
   }
 
-  function applyProfileToSettings(){
-    sex.value = state.profile.sex ?? "male";
-    height.value = state.profile.height ?? 170;
-    weight.value = state.profile.weight ?? 65;
-    bathCount.value = state.profile.bathCount ?? 1;
-    bathMin.value = state.profile.bathMin ?? 20;
-    bathIntensity.value = state.profile.bathIntensity ?? 1;
-    bathIntensityLabelEl.textContent = intensityLabel(bathIntensity.value);
-    renderCalcPreview();
-  }
+  function render() {
+    const rec = getTodayRec();
+    const taken = sumTaken(rec.entries);
+    const pct = Math.min(100, Math.round((taken / rec.targetMl) * 100));
+    
+    document.getElementById("targetMl").textContent = `${rec.targetMl} ml`;
+    document.getElementById("takenMl").textContent = `${taken} ml`;
+    document.getElementById("remainMl").textContent = `${Math.max(0, rec.targetMl - taken)} ml`;
+    document.getElementById("pct").textContent = `${pct}%`;
+    document.getElementById("barFill").style.width = `${pct}%`;
+    document.getElementById("todayStr").textContent = dateKey();
 
-  function readProfileFromSettings(){
-    state.profile = {
-      sex: sex.value,
-      height: Number(height.value||0),
-      weight: Number(weight.value||0),
-      bathCount: Number(bathCount.value||0),
-      bathMin: Number(bathMin.value||0),
-      bathIntensity: Number(bathIntensity.value||1),
-    };
-    saveState();
-  }
+    const logBody = document.getElementById("logBody");
+    logBody.innerHTML = "";
+    let running = 0;
+    rec.entries.forEach(e => {
+      running += e.ml;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${new Date(e.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td>+${e.ml}</td><td>${running}</td>`;
+      logBody.appendChild(tr);
+    });
 
-  function renderCalcPreview(){
-    const p = {
-      sex: sex.value,
-      height: Number(height.value||0),
-      weight: Number(weight.value||0),
-      bathCount: Number(bathCount.value||0),
-      bathMin: Number(bathMin.value||0),
-      bathIntensity: Number(bathIntensity.value||1),
-    };
-    bathIntensityLabelEl.textContent = intensityLabel(p.bathIntensity);
-    const c = computeTarget(p);
-    calcBase.textContent = `${c.baseMl.toLocaleString()} ml`;
-    calcBath.textContent = `${c.bathAddMl.toLocaleString()} ml`;
-    calcTotal.textContent = `${c.totalMl.toLocaleString()} ml`;
-  }
-
-  function renderQuickButtons(){
+    const quickBtns = document.getElementById("quickBtns");
     quickBtns.innerHTML = "";
-    state.quickAdds.forEach((ml, idx) => {
+    state.quickAdds.forEach(ml => {
       const b = document.createElement("button");
-      b.className = (ml >= 500) ? "warn" : "good";
-      b.textContent = `+${Number(ml).toLocaleString()}ml`;
-      b.dataset.add = String(ml);
-      b.dataset.idx = String(idx);
-      b.addEventListener("click", () => addDrink(Number(ml)));
+      b.textContent = `+${ml}`;
+      b.onclick = () => { rec.entries.push({t:Date.now(), ml}); saveState(); render(); awardKnowledgeIfAchieved(); };
       quickBtns.appendChild(b);
     });
   }
 
-  function renderQuickEditor(){
-    quickEditRow.innerHTML = "";
-    state.quickAdds.forEach((ml, i) => {
-      const wrap = document.createElement("div");
-      wrap.innerHTML = `
-        <label>ボタン${i+1} (ml)</label>
-        <input type="number" inputmode="numeric" min="10" max="2000" step="10" value="${ml}">
-      `;
-      const inp = wrap.querySelector("input");
-      inp.addEventListener("input", () => {
-        // ここでは保存せず一時反映だけ（保存ボタン押したときに確定）
-      });
-      quickEditRow.appendChild(wrap);
-    });
-  }
+  document.getElementById("addCustom").onclick = () => {
+    const ml = parseInt(document.getElementById("customAdd").value);
+    if (ml) { getTodayRec().entries.push({t:Date.now(), ml}); saveState(); render(); awardKnowledgeIfAchieved(); }
+  };
 
-  function saveQuickFromEditor(){
-    const inputs = quickEditRow.querySelectorAll("input");
-    const arr = [];
-    inputs.forEach(inp => {
-      const v = clamp(inp.value, 10, 2000);
-      arr.push(round10(v));
-    });
-    state.quickAdds = arr;
-    saveState();
-    renderQuickButtons();
-  }
+  document.getElementById("undo").onclick = () => { getTodayRec().entries.pop(); saveState(); render(); };
 
-  function renderLog(rec, tbody){
-    tbody.innerHTML = "";
-    let running = 0;
-    for(const e of rec.entries){
-      running += e.ml;
+  document.getElementById("openKnowledge").onclick = () => {
+    const k = state.knowledge;
+    const todayId = k.awardedByDate[dateKey()];
+    document.getElementById("stampCount").textContent = k.unlocked.length;
+    document.getElementById("todayStampText").textContent = todayId ? KNOWLEDGE_FACTS.find(f => f.id === todayId).text : "目標達成で知識解放。";
+    const list = document.getElementById("stampList");
+    list.innerHTML = "";
+    KNOWLEDGE_FACTS.forEach(f => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="mono">${formatTime(e.t)}</td>
-        <td class="rightText mono">+${e.ml.toLocaleString()} ml</td>
-        <td class="rightText mono">${running.toLocaleString()} ml</td>
-      `;
-      tbody.appendChild(tr);
-    }
-    if(rec.entries.length === 0){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="3" class="muted">まだ記録がありません。</td>`;
-      tbody.appendChild(tr);
-    }
-  }
-
-  function renderMain(){
-    ensureTodayTarget();
-
-    // date label
-    const now = new Date();
-    todayStr.textContent = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
-
-    const isToday = (viewingDateKey === dateKeyLocal());
-    const rec = getRecord(viewingDateKey, isToday); // 今日なら作る
-
-    // 過去日でデータがない場合の表示
-    if(!rec){
-      targetMlEl.textContent = `-- ml`;
-      targetSub.textContent = `データなし`;
-      takenMlEl.textContent = `0 ml`;
-      remainMlEl.textContent = `-- ml`;
-      pctEl.textContent = `0%`;
-      barFill.style.width = `0%`;
-      statusMsg.textContent = `データなし`;
-      logBody.innerHTML = `<tr><td colspan="3" class="muted">データがありません。</td></tr>`;
-      baseMlEl.textContent = `--`;
-      bathAddMlEl.textContent = `--`;
-      sumMlEl.textContent = `--`;
-      setInteractiveEnabled(false);
-      modeHint.textContent = `閲覧中：${fmtYMD(viewingDateKey)}（データなし）`;
-      return;
-    }
-
-    const taken = sumTaken(rec.entries);
-    const target = (typeof rec.targetMl === "number" && rec.targetMl>0) ? rec.targetMl : 0;
-
-    targetMlEl.textContent = `${target.toLocaleString()} ml`;
-    const L = target ? (target/1000).toFixed(2) : "--";
-    const cups = target ? cupsFromMl(target).toFixed(1) : "--";
-    targetSub.textContent = `${L} L / コップ(200ml) 約${cups}杯`;
-
-    takenMlEl.textContent = `${taken.toLocaleString()} ml`;
-    const remain = target ? Math.max(0, target - taken) : 0;
-    remainMlEl.textContent = `${remain.toLocaleString()} ml`;
-
-    const pct = target ? Math.min(100, Math.round((taken/target)*100)) : 0;
-    pctEl.textContent = `${pct}%`;
-    barFill.style.width = `${pct}%`;
-    statusMsg.textContent = statusText(taken, target);
-
-    renderLog(rec, logBody);
-
-    // breakdown（今日のプロフィール計算値を表示）
-    const c = computeTarget(state.profile);
-    baseMlEl.textContent = `${c.baseMl.toLocaleString()} ml`;
-    bathAddMlEl.textContent = `${c.bathAddMl.toLocaleString()} ml`;
-    sumMlEl.textContent = `${c.totalMl.toLocaleString()} ml`;
-
-    setInteractiveEnabled(isToday);
-    modeHint.textContent = isToday
-      ? `入力モード：今日（追加/戻すが有効）`
-      : `閲覧モード：${fmtYMD(viewingDateKey)}（誤操作防止のため追加/戻すは無効）`;
-  }
-
-  function setInteractiveEnabled(enabled){
-    // 追加系ボタン
-    quickBtns.querySelectorAll("button").forEach(b => b.disabled = !enabled);
-    $("addCustom").disabled = !enabled;
-    $("undo").disabled = !enabled;
-    $("setTaken0").disabled = !enabled;
-    customAdd.disabled = !enabled;
-  }
-
-  function addDrink(ml){
-    if(viewingDateKey !== dateKeyLocal()) return; // 過去日は追加不可
-    ml = Math.floor(Number(ml));
-    if(!Number.isFinite(ml) || ml<=0) return;
-
-    const k = dateKeyLocal();
-    const rec = getRecord(k, true);
-    rec.entries.push({ t: Date.now(), ml });
-    saveState();
-    renderMain();
-  }
-
-  function undoLast(){
-    if(viewingDateKey !== dateKeyLocal()) return;
-    const rec = getRecord(dateKeyLocal(), true);
-    if(rec.entries.length===0) return;
-    rec.entries.pop();
-    saveState();
-    renderMain();
-  }
-
-  function resetToday(){
-    if(viewingDateKey !== dateKeyLocal()) return;
-    const k = dateKeyLocal();
-    delete state.daily[k];
-    saveState();
-    ensureTodayTarget();
-    renderMain();
-  }
-
-  // ====== Export/Import ======
-  function exportJson(){
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type:"application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "uruoi_water_backup_v2.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-  function importJson(file){
-    const reader = new FileReader();
-    reader.onload = () => {
-      try{
-        const obj = JSON.parse(reader.result);
-        if(!obj || typeof obj!=="object") throw new Error("invalid");
-        if(!obj.profile || !obj.daily) throw new Error("shape");
-        state = obj;
-        // 足りないキー補完
-        if(!Array.isArray(state.quickAdds)) state.quickAdds = defaultState().quickAdds;
-        saveState();
-        applyProfileToSettings();
-        renderQuickButtons();
-        viewingDateKey = dateKeyLocal();
-        ensureTodayTarget();
-        renderMain();
-        alert("読み込み完了");
-      }catch{
-        alert("読み込み失敗：形式が違います");
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  // ====== Calendar ======
-  function setCalTitle(){
-    calTitle.textContent = `${calYearMonth.y}/${calYearMonth.m+1}`;
-  }
-
-  function buildCalendar(){
-    setCalTitle();
-    calGrid.innerHTML = "";
-
-    const head = document.createElement("div");
-    head.className = "calRow calHead";
-    const w = ["日","月","火","水","木","金","土"];
-    w.forEach(s => {
-      const d=document.createElement("div");
-      d.textContent=s;
-      head.appendChild(d);
+      tr.innerHTML = `<td class="mono">#${f.id}</td><td>${k.unlocked.includes(f.id) ? f.text : "？？？"}</td>`;
+      list.appendChild(tr);
     });
-    calGrid.appendChild(head);
+    document.getElementById("knowledgeOverlay").classList.add("open");
+  };
 
-    const first = new Date(calYearMonth.y, calYearMonth.m, 1);
-    const firstDow = first.getDay();
-    const start = new Date(calYearMonth.y, calYearMonth.m, 1 - firstDow);
+  document.getElementById("closeKnowledge").onclick = () => document.getElementById("knowledgeOverlay").classList.remove("open");
 
-    for(let week=0; week<6; week++){
-      const row = document.createElement("div");
-      row.className = "calRow";
-      for(let i=0;i<7;i++){
-        const d = new Date(start);
-        d.setDate(start.getDate() + week*7 + i);
-
-        const inMonth = (d.getMonth() === calYearMonth.m);
-        const key = dateKeyLocal(d);
-        const rec = getRecord(key, false);
-        const taken = rec ? sumTaken(rec.entries) : 0;
-        const target = rec && typeof rec.targetMl==="number" ? rec.targetMl : 0;
-        const pct = (rec && target>0) ? Math.round((taken/target)*100) : 0;
-
-        const cell = document.createElement("div");
-        cell.className = "calCell" + (inMonth ? "" : " dim") + (key === viewingDateKey ? " selected" : "");
-        cell.dataset.key = key;
-
-        const dayNum = d.getDate();
-        const meta = rec
-          ? `<div class="calMeta">
-                <div class="mono">${taken.toLocaleString()} / ${target.toLocaleString()} ml</div>
-                <div class="${badgeClass(pct)} mono">${Math.min(999,pct)}%</div>
-             </div>`
-          : `<div class="calMeta muted">—</div>`;
-
-        cell.innerHTML = `
-          <div class="calDay">
-            <span class="mono">${dayNum}</span>
-            ${key === dateKeyLocal() ? `<span class="badgeOk mono">今日</span>` : ``}
-          </div>
-          ${meta}
-        `;
-
-        cell.addEventListener("click", () => {
-          // dimでも選択は可能（前後月を触れるように）
-          viewingDateKey = key;
-          renderMain();
-          buildCalendar();
-          renderSelectedDay();
-        });
-
-        row.appendChild(cell);
-      }
-      calGrid.appendChild(row);
-    }
-  }
-
-  function renderSelectedDay(){
-    const k = viewingDateKey;
-    selDate.textContent = fmtYMD(k);
-
-    const isToday = (k === dateKeyLocal());
-    selMode.textContent = isToday ? "（今日：入力可）" : "（過去：閲覧）";
-
-    const rec = getRecord(k, false);
-    if(!rec){
-      selTarget.textContent = `--`;
-      selTaken.textContent = `--`;
-      selPct.textContent = `--`;
-      selLogBody.innerHTML = `<tr><td colspan="3" class="muted">データがありません。</td></tr>`;
-      return;
-    }
-
-    const taken = sumTaken(rec.entries);
-    const target = (typeof rec.targetMl==="number" && rec.targetMl>0) ? rec.targetMl : 0;
-    const pct = target ? Math.round((taken/target)*100) : 0;
-
-    selTarget.textContent = `${target.toLocaleString()} ml`;
-    selTaken.textContent = `${taken.toLocaleString()} ml`;
-    selPct.textContent = `${Math.min(999,pct)}%`;
-
-    renderLog(rec, selLogBody);
-  }
-
-  // ====== Modal helpers ======
-  function openModal(overlay){
-    overlay.classList.add("open");
-    overlay.setAttribute("aria-hidden","false");
-  }
-  function closeModal(overlay){
-    overlay.classList.remove("open");
-    overlay.setAttribute("aria-hidden","true");
-  }
-
-  // ====== Wire up ======
-  // Initial
-  ensureTodayTarget();
-  renderQuickButtons();
-  renderMain();
-
-  // Settings open/close
-  $("openSettings").addEventListener("click", () => {
-    applyProfileToSettings();
-    renderQuickEditor();
-    openModal(settingsOverlay);
-  });
-  $("btnEditTarget").addEventListener("click", () => {
-    applyProfileToSettings();
-    renderQuickEditor();
-    openModal(settingsOverlay);
-  });
-  $("closeSettings").addEventListener("click", () => closeModal(settingsOverlay));
-  settingsOverlay.addEventListener("click", (e) => { if(e.target === settingsOverlay) closeModal(settingsOverlay); });
-
-  // Settings inputs -> preview only
-  [sex, height, weight, bathCount, bathMin, bathIntensity].forEach(el => {
-    el.addEventListener("input", renderCalcPreview);
-    el.addEventListener("change", renderCalcPreview);
-  });
-
-  $("applyTargetToday").addEventListener("click", () => {
-    // まずプロフィールを保存
-    readProfileFromSettings();
-    // 計算して今日の目標に適用
-    const c = computeTarget(state.profile);
-    const k = dateKeyLocal();
-    const rec = getRecord(k, true);
-    rec.targetMl = c.totalMl;
-    saveState();
-    viewingDateKey = dateKeyLocal();
-    renderQuickButtons();
-    renderMain();
-    alert("今日の目標を更新しました");
-  });
-
-  // ★追加：手入力目標を今日に適用
-  $("applyManualTargetToday").addEventListener("click", () => {
-    const v = clamp($("manualTargetMl").value, 500, 10000);
-    const ml = round10(v);
-
-    const k = dateKeyLocal();
-    const rec = getRecord(k, true);
-    rec.targetMl = ml;
-
-    saveState();
-    viewingDateKey = dateKeyLocal();
-    renderMain();
-
-    alert("手入力の目標を今日に適用しました");
-  });
-  // ★追加ここまで
-
-  $("resetProfile").addEventListener("click", () => {
-    state.profile = defaultState().profile;
-    saveState();
-    applyProfileToSettings();
-    alert("入力を初期化しました（目標は「適用」しない限り変わりません）");
-  });
-
-  $("saveQuick").addEventListener("click", () => {
-    saveQuickFromEditor();
-    alert("クイックボタンを保存しました");
-  });
-
-  $("resetQuick").addEventListener("click", () => {
-    state.quickAdds = defaultState().quickAdds.slice();
-    saveState();
-    renderQuickEditor();
-    renderQuickButtons();
-    alert("クイックボタンを初期値に戻しました");
-  });
-
-  // Main buttons
-  $("addCustom").addEventListener("click", () => {
-    addDrink(customAdd.value);
-    customAdd.value = "";
-  });
-
-  $("undo").addEventListener("click", undoLast);
-
-  $("setTaken0").addEventListener("click", () => {
-    if(confirm("今日の記録を0にして、ログも消します。よろしい？")) resetToday();
-  });
-
-  $("exportJson").addEventListener("click", exportJson);
-  $("importJson").addEventListener("click", () => $("importFile").click());
-  $("importFile").addEventListener("change", (e) => {
-    const f = e.target.files?.[0];
-    if(f) importJson(f);
-    e.target.value = "";
-  });
-
-  // History
-  $("openHistory").addEventListener("click", () => {
-    // カレンダーは現在のviewingDateKeyに合わせる
-    const d = parseDateKey(viewingDateKey);
-    calYearMonth = { y: d.getFullYear(), m: d.getMonth() };
-    buildCalendar();
-    renderSelectedDay();
-    openModal(historyOverlay);
-  });
-  $("closeHistory").addEventListener("click", () => closeModal(historyOverlay));
-  historyOverlay.addEventListener("click", (e) => { if(e.target === historyOverlay) closeModal(historyOverlay); });
-
-  $("prevMonth").addEventListener("click", () => {
-    calYearMonth.m -= 1;
-    if(calYearMonth.m < 0){ calYearMonth.m = 11; calYearMonth.y -= 1; }
-    buildCalendar();
-  });
-  $("nextMonth").addEventListener("click", () => {
-    calYearMonth.m += 1;
-    if(calYearMonth.m > 11){ calYearMonth.m = 0; calYearMonth.y += 1; }
-    buildCalendar();
-  });
-  $("jumpToday").addEventListener("click", () => {
-    viewingDateKey = dateKeyLocal();
-    const d = new Date();
-    calYearMonth = { y:d.getFullYear(), m:d.getMonth() };
-    ensureTodayTarget();
-    renderMain();
-    buildCalendar();
-    renderSelectedDay();
-  });
-
+  // Init
+  render();
+  awardKnowledgeIfAchieved();
+  window.addEventListener("focus", awardKnowledgeIfAchieved);
 })();
-</script>
-<script>
-  // バックアップを書き出す
-  document.getElementById("exportBackupBtn").onclick = () => {
-    const data = localStorage.getItem("uruoi-data");
-    if (!data) {
-      alert("バックアップするデータがありません");
-      return;
-    }
-
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "uruoi-backup.json";
-    a.click();
-
-    URL.revokeObjectURL(url);
-  };
-
-  // バックアップを読み込む
-  document.getElementById("importBackupBtn").onclick = () => {
-    document.getElementById("importBackupInput").click();
-  };
-
-  document.getElementById("importBackupInput").onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      localStorage.setItem("uruoi-data", reader.result);
-      alert("引き継ぎ完了。再読み込みしてください。");
-      location.reload();
-    };
-    reader.readAsText(file);
-  };
 </script>
 </body>
 </html>
