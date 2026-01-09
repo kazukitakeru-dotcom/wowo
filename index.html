@@ -20,13 +20,17 @@
     body{ margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
       background: radial-gradient(1200px 800px at 20% 0%, #122040, var(--bg)); color:var(--text); }
     
-    /* ヘッダーのスマホ最適化 */
-    header{ padding:12px 12px 8px; max-width:980px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    /* ヘッダーのレイアウト修正 */
+    header{ padding:12px 12px 8px; max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:8px; }
+    @media (min-width: 600px){ header{ flex-direction:row; align-items:center; justify-content:space-between; } }
+    
+    .header-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
     header h1{ margin:0; font-size:16px; letter-spacing:.5px; white-space:nowrap; }
-    header .right{ display:flex; gap:4px; align-items:center; }
+    
+    header .right{ display:flex; gap:4px; align-items:center; justify-content:flex-end; }
     header .right button{ padding:6px 8px; font-size:11px; border-radius:8px; white-space:nowrap; }
     
-    .pill{ display:inline-flex; align-items:center; gap:8px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); background:var(--chip); color:var(--text); font-size:10px; }
+    .pill{ display:inline-flex; align-items:center; gap:8px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); background:var(--chip); color:var(--text); font-size:11px; }
     
     main{ padding:12px 16px 24px; display:grid; gap:12px; max-width:980px; margin:0 auto; }
     .grid{ display:grid; gap:12px; grid-template-columns:1fr; }
@@ -99,11 +103,11 @@
 
 <body>
 <header>
-  <div>
+  <div class="header-top">
     <h1>URUOI 水分管理</h1>
+    <span class="pill"><span class="mono" id="todayStr"></span></span>
   </div>
   <div class="right">
-    <span class="pill"><span class="mono" id="todayStr"></span></span>
     <button class="primary" id="openKnowledge">知識</button>
     <button class="primary" id="openHistory">カレンダー</button>
     <button class="primary" id="openSettings">設定</button>
@@ -364,7 +368,7 @@
     { id: 16, text: "痛い病気ランキング上位の尿管結石、その一番の対策はこまめな水分補給だよ。（※尿の量を増やすことで、結晶が固まりにくくなります）" },
     { id: 17, text: "実は、地表に見えていない地下にも大量の水が眠っているんだ。（※淡水の約3割は地下水で、川や湖よりずっと多い量があります）" },
     { id: 18, text: "川や湖の水は身近だけど、地球全体で見るとかなり少数派んだ。（※淡水の中でも地表水は1％未満です）" },
-    { id: 19, text: "日本は、世界的に見ても水がとても豊かな国なんだ。（※雨が多く、山が多いので、自然にろ過された水が身近にあります）" },
+    { id: 19, text: "日本は、世界的に見ても水がとても豊かな国んだ。（※雨が多く、山が多いので、自然にろ過された水が身近にあります）" },
     { id: 20, text: "日本で山の水が比較的きれいなのは、森や土がフィルターになってるからなんだ。（※森林は水をろ過し、ゆっくり地中にしみ込ませる働きがあります）" },
     { id: 21, text: "実は、水のもとになった成分は宇宙から来た可能性があるんだ。（※彗星や隕石が地球に水をもたらしたという説があります）" },
     { id: 22, text: "地球上の水の約97％は海水で、重さにすると約1.4×10^21トン（140京トン）にもなるんだ。（※概算）" },
@@ -379,7 +383,7 @@
     { id: 31, text: "日本全体に1日に降る雨の量は、とんでもない重さになることがあるんだ。（※数億〜数十億トン規模になることもあります）" },
     { id: 32, text: "水は地球の中で、ずっと姿を変えながら循環してるんだ。（※蒸発→雲→雨→地下水→川→海）" },
     { id: 33, text: "水分が足りないと、血液はドロッとしやすくなるんだ。その結果、体はいつもより疲れやすくなってしまうよ。（※粘度上昇で酸素や栄養が運ばれにくくなることがあります）" },
-    { id: 34, text: "体の中で一番、水を必要としている臓器はどこだと思う？答えは「脳」なんだ。（※脳は約75％が水でできています）" },
+    { id: 34, text: "体の中で一番、水を必要としている臓器はどこだと思う？答えは「脳」んだ。（※脳は約75％が水でできています）" },
     { id: 35, text: "1日に飲む水の目安、実はかなり簡単んだ。👉 体重×30〜35ml がひとつの目安だよ。（※運動・入浴・暑さで増える）" },
     { id: 36, text: "地上で一番水を飲む動物、誰だと思う？👉 ゾウなんだ。（※1日に100リットル以上飲むこともあります）" },
     { id: 37, text: "トイレの回数、実は水分足りてるかのサインなんだ。（※健康な成人では1日5〜7回程度が目安とされます）" },
@@ -685,8 +689,8 @@
 
   function renderMain(){
     ensureTodayTarget();
-    const now = new Date();
-    todayStr.textContent = `${now.getMonth()+1}/${now.getDate()}`;
+    const now = parseDateKey(viewingDateKey);
+    todayStr.textContent = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
     const isToday = (viewingDateKey === dateKeyLocal());
     const rec = getRecord(viewingDateKey, isToday);
 
