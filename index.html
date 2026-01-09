@@ -148,10 +148,7 @@
 
       <div class="btns" style="margin-top:10px">
         <button id="setTaken0">今日を0にする</button>
-        <button id="exportJson">データを書き出し(JSON)</button>
-        <button id="importJson">データを読み込み(JSON)</button>
       </div>
-      <input id="importFile" type="file" accept="application/json" style="display:none" />
 
       <div class="hint" id="modeHint"></div>
     </section>
@@ -360,7 +357,7 @@
     { id: 12, text: "淡水の多くは、実は氷として地球に存在しているんだ。（※淡水の約7割は氷河や氷床にあります）" },
     { id: 13, text: "地下水は、長い時間をかけて地層にたまった水なんだ。（※数十年〜数千年かけて蓄えられたものもあります）" },
     { id: 14, text: "ビールやコーヒーも水分ではあるけど、飲んだ分がそのまま体に残るとは限らないんだ。（※アルコールやカフェインには利尿作用があり、摂取量によっては「飲んだ量より多く排出される」こともあります）" },
-    { id: 15, text: "尿管結石は、水分不足が続くと発症しやすい、すごく痛い病気なんだ。（※「痛い病気ランキング」では上位に挙げられることが多いです）" },
+    { id: 15, text: "尿管結石は、水分不足が続くと発症しやすい、すごく痛い病気んだ。（※「痛い病気ランキング」では上位に挙げられることが多いです）" },
     { id: 16, text: "痛い病気ランキング上位の尿管結石、その一番の対策はこまめな水分補給だよ。（※尿の量を増やすことで、結晶が固まりにくくなります）" },
     { id: 17, text: "実は、地表に見えていない地下にも大量の水が眠っているんだ。（※淡水の約3割は地下水で、川や湖よりずっと多い量があります）" },
     { id: 18, text: "川や湖の水は身近だけど、地球全体で見るとかなり少数派んだ。（※淡水の中でも地表水は1％未満です）" },
@@ -847,9 +844,6 @@
   $("addCustom").onclick = () => { addDrink(customAdd.value); customAdd.value = ""; };
   $("undo").onclick = undoLast;
   $("setTaken0").onclick = () => { if(confirm("初期化しますか？")) resetToday(); };
-  $("exportJson").onclick = exportJson;
-  $("importJson").onclick = () => $("importFile").click();
-  $("importFile").onchange = (e) => { const f = e.target.files?.[0]; if(f) importJson(f); e.target.value = ""; };
   $("prevMonth").onclick = () => { calYearMonth.m--; if(calYearMonth.m<0){calYearMonth.m=11; calYearMonth.y--;} buildCalendar(); };
   $("nextMonth").onclick = () => { calYearMonth.m++; if(calYearMonth.m>11){calYearMonth.m=0; calYearMonth.y++;} buildCalendar(); };
   $("jumpToday").onclick = () => { viewingDateKey = dateKeyLocal(); calYearMonth = {y:new Date().getFullYear(), m:new Date().getMonth()}; renderMain(); buildCalendar(); renderSelectedDay(); };
@@ -858,9 +852,6 @@
   $("exportBackupBtn").onclick = () => { const blob = new Blob([localStorage.getItem(KEY)], {type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "uruoi_backup.json"; a.click(); };
   $("importBackupBtn").onclick = () => $("importBackupInput").click();
   $("importBackupInput").onchange = (e) => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => { localStorage.setItem(KEY, r.result); alert("再読み込みします"); location.reload(); }; r.readAsText(f); };
-
-  function exportJson(){ const blob = new Blob([JSON.stringify(state, null, 2)], { type:"application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "uruoi_water_backup_v2.json"; a.click(); }
-  function importJson(file){ const r = new FileReader(); r.onload = () => { try{ state = JSON.parse(r.result); saveState(); location.reload(); }catch{ alert("失敗"); }}; r.readAsText(file); }
 
   // Init
   renderQuickButtons();
