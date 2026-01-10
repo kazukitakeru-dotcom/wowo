@@ -234,8 +234,14 @@
           </div>
           <div class="btns">
             <button class="primary" id="applyTargetToday">計算結果を「今日の目標」に適用</button>
+            <button class="primary" id="saveTargetDaily">計算結果を「毎日の目標」に保存</button>
             <button id="resetProfile">入力を初期化</button>
           </div>
+
+          <div class="pill" style="margin-top:10px">
+            <span>毎日の目標</span><span class="mono" id="dailyDefaultMl">未設定</span>
+          </div>
+
           <div class="kpi">
             <div class="box">
               <div class="t">計算：ベース</div>
@@ -259,7 +265,34 @@
               <input id="manualTargetMl" type="number" inputmode="numeric" min="500" max="10000" step="10" placeholder="例：2300">
             </div>
             <button class="primary" id="applyManualTargetToday">手入力を「今日の目標」に適用</button>
+            <button class="primary" id="saveManualTargetDaily">手入力を「毎日の目標」に保存</button>
           </div>
+
+          <div style="height:16px"></div>
+          <h2>日付の区切り（今日以降に反映）</h2>
+          <div class="row">
+            <div style="min-width:220px">
+              <label>更新タイミング</label>
+              <select id="dayRolloverPreset">
+                <option value="4">4時更新（デフォルト）</option>
+                <option value="0">24時更新（0時）</option>
+                <option value="custom">カスタム</option>
+              </select>
+            </div>
+            <div>
+              <label>カスタム時刻 (0〜23)</label>
+              <input id="dayRolloverHour" type="number" inputmode="numeric" min="0" max="23" step="1" value="4">
+            </div>
+            <button class="primary" id="applyDayRollover">保存</button>
+          </div>
+          <div class="pill" style="margin-top:10px">
+            <span>現在の区切り</span><span class="mono" id="rolloverCurrent">--</span>
+          </div>
+          <div class="hint">
+            ここで変更しても、過去データの判定は変えません（今日以降にのみ反映されます）。<br>
+            ※変更後、日付表示が切り替わる可能性があります（例：深夜帯の記録）。
+          </div>
+
         </section>
         <section class="card" style="box-shadow:none">
           <h2>クイックボタン</h2>
@@ -414,13 +447,24 @@
   const SERIES_ORDER = ["A","B","C","D","E","F","G"];
 
   const defaultState = () => ({
-    profile: { sex:"male", height:170, weight:65, bathCount:1, bathMin:20, bathIntensity:1 },
+    profile: { sex:"male", height:170, weight:65, bathCount:1, bathMin:20, bathIntensity:1, defaultTargetMl: null },
     quickAdds: [150, 200, 250, 350, 500],
     daily: {},
-    knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" }
+    knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" },
+    settings: {
+      // 今日以降のみ反映できるように、区切りルールを履歴として保持する
+      rolloverRules: [{ fromTs: 0, hour: 4 }] // デフォルト4時更新
+    }
   });
 
   const $ = (id) => document.getElementById(id);
+
+  function clamp(n,min,max){
+    n=Number(n);
+    if(Number.isNaN(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+  function round10(n){ return Math.round(n/10)*10; }
 
   function loadState(){
     try{
@@ -428,9 +472,23 @@
       if(!raw) return defaultState();
       const s = JSON.parse(raw);
       if(!s.profile) s.profile = defaultState().profile;
+      if(typeof s.profile.defaultTargetMl !== "number") s.profile.defaultTargetMl = null;
       if(!Array.isArray(s.quickAdds)) s.quickAdds = defaultState().quickAdds;
       if(!s.daily) s.daily = {};
       if(!s.knowledge) s.knowledge = defaultState().knowledge;
+
+      // settings の補完（旧形式 dayRolloverHour 互換も含む）
+      if(!s.settings) s.settings = defaultState().settings;
+      if(Array.isArray(s.settings.rolloverRules) && s.settings.rolloverRules.length > 0){
+        // OK
+      }else{
+        const oldHour = Number.isFinite(s.settings.dayRolloverHour) ? Number(s.settings.dayRolloverHour) : 4;
+        s.settings.rolloverRules = [{ fromTs: 0, hour: clamp(oldHour,0,23) }];
+      }
+      s.settings.rolloverRules = s.settings.rolloverRules
+        .map(r => ({ fromTs: Number(r.fromTs||0), hour: clamp(r.hour,0,23) }))
+        .sort((a,b)=>a.fromTs-b.fromTs);
+
       return s;
     }catch{
       return defaultState();
@@ -438,12 +496,30 @@
   }
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
+  function getRolloverHourForTs(ts){
+    const rules = state?.settings?.rolloverRules;
+    if(!Array.isArray(rules) || rules.length === 0) return 4;
+    let h = (rules[0].hour ?? 4);
+    for(const r of rules){
+      if(ts >= r.fromTs) h = r.hour;
+      else break;
+    }
+    return clamp(h, 0, 23);
+  }
+
   function dateKeyLocal(d=new Date()){
-    const y=d.getFullYear();
-    const m=String(d.getMonth()+1).padStart(2,"0");
-    const day=String(d.getDate()).padStart(2,"0");
+    const ts = d.getTime();
+    const h = getRolloverHourForTs(ts);
+
+    const dd = new Date(d);
+    dd.setHours(dd.getHours() - h);
+
+    const y=dd.getFullYear();
+    const m=String(dd.getMonth()+1).padStart(2,"0");
+    const day=String(dd.getDate()).padStart(2,"0");
     return `${y}-${m}-${day}`;
   }
+
   function parseDateKey(k){
     const [y,m,d] = k.split("-").map(Number);
     return new Date(y, m-1, d);
@@ -458,12 +534,7 @@
     const mm=String(d.getMinutes()).padStart(2,"0");
     return `${hh}:${mm}`;
   }
-  function clamp(n,min,max){
-    n=Number(n);
-    if(Number.isNaN(n)) return min;
-    return Math.max(min, Math.min(max, n));
-  }
-  function round10(n){ return Math.round(n/10)*10; }
+
   function intensityFactor(v){
     v=Number(v);
     if(v===0) return 0.7;
@@ -553,6 +624,13 @@
     }
   }
 
+  function formatRolloverLabel(h){
+    h = clamp(h,0,23);
+    if(h===0) return "24時更新（0時）";
+    if(h===4) return "4時更新";
+    return `${h}時更新`;
+  }
+
   let state = loadState();
   let viewingDateKey = dateKeyLocal();
   let calYearMonth = (() => { const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
@@ -594,13 +672,43 @@
   const selPct = $("selPct");
   const selLogBody = $("selLogBody");
   const knowledgeOverlay = $("knowledgeOverlay");
+  const dailyDefaultMlEl = $("dailyDefaultMl");
+
+  const dayRolloverPreset = $("dayRolloverPreset");
+  const dayRolloverHour = $("dayRolloverHour");
+  const rolloverCurrent = $("rolloverCurrent");
+
+  function renderDailyDefaultInSettings(){
+    const v = state.profile.defaultTargetMl;
+    dailyDefaultMlEl.textContent = (typeof v === "number" && v > 0) ? `${v.toLocaleString()} ml` : "未設定";
+  }
+
+  function applyDayRolloverToSettings(){
+    const h = getRolloverHourForTs(Date.now());
+    rolloverCurrent.textContent = `${formatRolloverLabel(h)}（${h}）`;
+    if(h === 4){
+      dayRolloverPreset.value = "4";
+      dayRolloverHour.value = 4;
+    }else if(h === 0){
+      dayRolloverPreset.value = "0";
+      dayRolloverHour.value = 0;
+    }else{
+      dayRolloverPreset.value = "custom";
+      dayRolloverHour.value = h;
+    }
+    dayRolloverHour.disabled = (dayRolloverPreset.value !== "custom");
+  }
 
   function ensureTodayTarget(){
     const k = dateKeyLocal();
     const rec = getRecord(k, true);
     if(typeof rec.targetMl !== "number" || rec.targetMl<=0){
-      const c = computeTarget(state.profile);
-      rec.targetMl = c.totalMl;
+      if(typeof state.profile.defaultTargetMl === "number" && state.profile.defaultTargetMl > 0){
+        rec.targetMl = state.profile.defaultTargetMl;
+      }else{
+        const c = computeTarget(state.profile);
+        rec.targetMl = c.totalMl;
+      }
       saveState();
     }
   }
@@ -614,6 +722,8 @@
     bathIntensity.value = state.profile.bathIntensity ?? 1;
     bathIntensityLabelEl.textContent = intensityLabel(bathIntensity.value);
     renderCalcPreview();
+    renderDailyDefaultInSettings();
+    applyDayRolloverToSettings();
   }
 
   function readProfileFromSettings(){
@@ -624,6 +734,7 @@
       bathCount: Number(bathCount.value||0),
       bathMin: Number(bathMin.value||0),
       bathIntensity: Number(bathIntensity.value||1),
+      defaultTargetMl: (typeof state.profile.defaultTargetMl === "number") ? state.profile.defaultTargetMl : null,
     };
     saveState();
   }
@@ -782,7 +893,11 @@
       for(let i=0;i<7;i++){
         const d = new Date(start); d.setDate(start.getDate() + week*7 + i);
         const inMonth = (d.getMonth() === calYearMonth.m);
-        const key = dateKeyLocal(d);
+
+        // カレンダー日付は「その日の23:59」を使ってキー化（区切りが23時でもズレない）
+        const dForKey = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 0, 0);
+        const key = dateKeyLocal(dForKey);
+
         const rec = getRecord(key, false);
         const taken = rec ? sumTaken(rec.entries) : 0;
         const target = rec && typeof rec.targetMl==="number" ? rec.targetMl : 0;
@@ -839,6 +954,60 @@
 
   $("applyTargetToday").onclick = () => { readProfileFromSettings(); const c = computeTarget(state.profile); getRecord(dateKeyLocal(), true).targetMl = c.totalMl; saveState(); renderMain(); alert("適用しました"); };
   $("applyManualTargetToday").onclick = () => { const ml = round10(clamp($("manualTargetMl").value, 500, 10000)); getRecord(dateKeyLocal(), true).targetMl = ml; saveState(); renderMain(); alert("適用しました"); };
+
+  $("saveTargetDaily").onclick = () => {
+    readProfileFromSettings();
+    const c = computeTarget(state.profile);
+    state.profile.defaultTargetMl = c.totalMl;
+    saveState();
+    renderDailyDefaultInSettings();
+    alert("保存しました");
+  };
+  $("saveManualTargetDaily").onclick = () => {
+    const ml = round10(clamp($("manualTargetMl").value, 500, 10000));
+    state.profile.defaultTargetMl = ml;
+    saveState();
+    renderDailyDefaultInSettings();
+    alert("保存しました");
+  };
+
+  dayRolloverPreset.onchange = () => {
+    if(dayRolloverPreset.value === "custom"){
+      dayRolloverHour.disabled = false;
+    }else{
+      dayRolloverHour.disabled = true;
+      dayRolloverHour.value = Number(dayRolloverPreset.value);
+    }
+  };
+
+  $("applyDayRollover").onclick = () => {
+    let h;
+    if(dayRolloverPreset.value === "custom"){
+      h = clamp(dayRolloverHour.value, 0, 23);
+      dayRolloverHour.value = h;
+    }else{
+      h = Number(dayRolloverPreset.value);
+    }
+
+    const ts = Date.now();
+    if(!Array.isArray(state.settings.rolloverRules)) state.settings.rolloverRules = [{fromTs:0, hour:4}];
+
+    const last = state.settings.rolloverRules[state.settings.rolloverRules.length - 1];
+    if(!last || last.hour !== Number(h)){
+      state.settings.rolloverRules.push({ fromTs: ts, hour: Number(h) });
+      state.settings.rolloverRules.sort((a,b)=>a.fromTs-b.fromTs);
+    }
+
+    saveState();
+    applyDayRolloverToSettings();
+
+    // 表示は新ルールに追随（切り替えで「今日」が変わり得る）
+    viewingDateKey = dateKeyLocal(new Date());
+    renderMain();
+
+    alert("保存しました");
+  };
+
   $("saveQuick").onclick = () => { saveQuickFromEditor(); alert("保存しました"); };
   $("resetQuick").onclick = () => { state.quickAdds = defaultState().quickAdds; saveState(); renderQuickEditor(); renderQuickButtons(); };
   $("addCustom").onclick = () => { addDrink(customAdd.value); customAdd.value = ""; };
