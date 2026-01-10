@@ -20,7 +20,6 @@
     body{ margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
       background: radial-gradient(1200px 800px at 20% 0%, #122040, var(--bg)); color:var(--text); }
 
-    /* ヘッダーのレイアウト修正 */
     header{ padding:12px 12px 8px; max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:8px; }
     @media (min-width: 600px){ header{ flex-direction:row; align-items:center; justify-content:space-between; } }
 
@@ -72,7 +71,6 @@
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Noto Sans Mono", monospace; }
     .hint{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45; }
 
-    /* Modal */
     .overlay{ position:fixed; inset:0; background: rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:50; }
     .overlay.open{ display:flex; }
     .modal{ width:min(920px, 100%); max-height:min(88vh, 920px); overflow:auto; background: color-mix(in oklab, var(--card) 92%, black 8%);
@@ -84,7 +82,6 @@
     .twoCol{ display:grid; gap:12px; grid-template-columns:1fr; }
     @media (min-width: 900px){ .twoCol{ grid-template-columns: 1fr 1fr; } }
 
-    /* Calendar */
     .calTop{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
     .calGrid{ margin-top:10px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
     .calRow{ display:grid; grid-template-columns: repeat(7, 1fr); }
@@ -293,8 +290,8 @@
             画面上の日付（YYYY/MM/DD表示）は、暦どおり 0:00 で必ず切り替わります。<br>
             ※基準時間の変更は「保存した時刻以降」にだけ反映されます（過去データは変えません）。
           </div>
-
         </section>
+
         <section class="card" style="box-shadow:none">
           <h2>クイックボタン</h2>
           <div class="row" id="quickEditRow"></div>
@@ -382,7 +379,6 @@
 (() => {
   const KEY = "uruoi_water_v2";
 
-  // --- Knowledge Data (55 facts) ---
   const KNOWLEDGE_FACTS = [
     { id: 1,  text: "なんとね、成人の6〜7割の人が軽い水不足状態だって言われてるんだ。しかも、ほとんどの人が気づいてないみたい。（※軽度脱水は無自覚が多いと言われています）" },
     { id: 2,  text: "「喉かわいたな〜」って思った時、体はもう軽い脱水状態に入ってるんだって。（※渇きは脱水のサインになりやすいです）" },
@@ -453,7 +449,6 @@
     daily: {},
     knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" },
     settings: {
-      // fromTs以降は hour の基準時間で集計する（変更は保存時刻以降だけ反映）
       rolloverRules: [{ fromTs: 0, hour: 4 }]
     }
   });
@@ -478,10 +473,8 @@
       if(!s.daily) s.daily = {};
       if(!s.knowledge) s.knowledge = defaultState().knowledge;
 
-      // settings移行/補正
       if(!s.settings) s.settings = defaultState().settings;
 
-      // 旧形式の dayRolloverHour があった場合も rolloverRules に移行
       if(Array.isArray(s.settings.rolloverRules) && s.settings.rolloverRules.length > 0){
         // ok
       }else{
@@ -511,7 +504,6 @@
     return clamp(h, 0, 23);
   }
 
-  // データ用キー（基準時間で日付が変わる）
   function dateKeyLocal(d=new Date()){
     const ts = d.getTime();
     const h = getRolloverHourForTs(ts);
@@ -525,7 +517,6 @@
     return `${y}-${m}-${day}`;
   }
 
-  // 表示用キー（暦どおり 0:00 で日付が変わる）
   function dateKeyCalendar(d=new Date()){
     const y=d.getFullYear();
     const m=String(d.getMonth()+1).padStart(2,"0");
@@ -604,7 +595,7 @@
   }
 
   function awardKnowledgeIfAchieved() {
-    const today = dateKeyLocal(); // スタンプ判定は「集計日」
+    const today = dateKeyLocal();
     if (state.knowledge.awardedByDate[today]) return;
     const rec = getRecord(today, false);
     if(!rec) return;
@@ -644,14 +635,14 @@
     return `${h}時更新`;
   }
 
+  // ====== state ======
   let state = loadState();
 
-  // データの閲覧先（集計日）
+  // ★設定画面の「試し打ち」用（閉じたら破棄 / 決定ボタンでのみ反映）
+  let tempProfile = null;
+
   let viewingDateKey = dateKeyLocal();
-
-  // 表示の閲覧先（暦日）
   let viewingCalendarKey = dateKeyCalendar(new Date());
-
   let calYearMonth = (() => { const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
 
   const todayStr = $("todayStr");
@@ -697,6 +688,11 @@
   const dayRolloverHour = $("dayRolloverHour");
   const rolloverCurrent = $("rolloverCurrent");
 
+  function cloneProfile(p){
+    // structuredClone がない環境でも動くように
+    try{ return structuredClone(p); }catch{ return JSON.parse(JSON.stringify(p)); }
+  }
+
   function renderDailyDefaultInSettings(){
     const v = state.profile.defaultTargetMl;
     dailyDefaultMlEl.textContent = (typeof v === "number" && v > 0) ? `${v.toLocaleString()} ml` : "未設定";
@@ -732,48 +728,58 @@
     }
   }
 
+  // ★設定画面を開くとき：tempProfile を作って、それをUIに反映
   function applyProfileToSettings(){
-    sex.value = state.profile.sex ?? "male";
-    height.value = state.profile.height ?? 170;
-    weight.value = state.profile.weight ?? 65;
-    bathCount.value = state.profile.bathCount ?? 1;
-    bathMin.value = state.profile.bathMin ?? 20;
-    bathIntensity.value = state.profile.bathIntensity ?? 1;
+    tempProfile = cloneProfile(state.profile);
+
+    sex.value = tempProfile.sex ?? "male";
+    height.value = tempProfile.height ?? 170;
+    weight.value = tempProfile.weight ?? 65;
+    bathCount.value = tempProfile.bathCount ?? 1;
+    bathMin.value = tempProfile.bathMin ?? 20;
+    bathIntensity.value = tempProfile.bathIntensity ?? 1;
+
     bathIntensityLabelEl.textContent = intensityLabel(bathIntensity.value);
-    renderCalcPreview();
+    renderCalcPreview(); // tempProfile based
     renderDailyDefaultInSettings();
     applyDayRolloverToSettings();
   }
 
-  function readProfileFromSettings(){
-    state.profile = {
-      sex: sex.value,
-      height: Number(height.value||0),
-      weight: Number(weight.value||0),
-      bathCount: Number(bathCount.value||0),
-      bathMin: Number(bathMin.value||0),
-      bathIntensity: Number(bathIntensity.value||1),
-      defaultTargetMl: (typeof state.profile.defaultTargetMl === "number") ? state.profile.defaultTargetMl : null,
-    };
+  // ★UIの値を tempProfile に読み込む（state.profile は触らない）
+  function readTempProfileFromSettings(){
+    if(!tempProfile) tempProfile = cloneProfile(state.profile);
+    tempProfile.sex = sex.value;
+    tempProfile.height = Number(height.value||0);
+    tempProfile.weight = Number(weight.value||0);
+    tempProfile.bathCount = Number(bathCount.value||0);
+    tempProfile.bathMin = Number(bathMin.value||0);
+    tempProfile.bathIntensity = Number(bathIntensity.value||1);
+
+    // defaultTargetMl は state.profile の現状を維持（ボタン押したときにのみ変更）
+    tempProfile.defaultTargetMl = (typeof state.profile.defaultTargetMl === "number") ? state.profile.defaultTargetMl : null;
+  }
+
+  // ★確定：tempProfile を state.profile に反映して保存
+  function commitTempProfileToState(){
+    if(!tempProfile) return;
+    // defaultTargetMl は tempProfile に入ってる値で上書き（基本は現状維持）
+    state.profile = cloneProfile(tempProfile);
     saveState();
   }
 
   function renderCalcPreview(){
-    const p = {
-      sex: sex.value,
-      height: Number(height.value||0),
-      weight: Number(weight.value||0),
-      bathCount: Number(bathCount.value||0),
-      bathMin: Number(bathMin.value||0),
-      bathIntensity: Number(bathIntensity.value||1),
-    };
-    bathIntensityLabelEl.textContent = intensityLabel(p.bathIntensity);
-    const c = computeTarget(p);
+    // ★必ず tempProfile で計算（未生成なら現プロフィールで）
+    readTempProfileFromSettings();
+    bathIntensityLabelEl.textContent = intensityLabel(tempProfile.bathIntensity);
+
+    const c = computeTarget(tempProfile);
     calcBase.textContent = `${c.baseMl.toLocaleString()} ml`;
     calcBath.textContent = `${c.bathAddMl.toLocaleString()} ml`;
     calcTotal.textContent = `${c.totalMl.toLocaleString()} ml`;
   }
-const bindCalcLiveUpdate = () => {
+
+  // ★リアルタイム更新
+  const bindCalcLiveUpdate = () => {
     const onAnyChange = () => renderCalcPreview();
 
     sex.addEventListener("change", onAnyChange);
@@ -786,6 +792,7 @@ const bindCalcLiveUpdate = () => {
 
     bathIntensity.addEventListener("input", onAnyChange);
   };
+  bindCalcLiveUpdate();
 
   function renderQuickButtons(){
     quickBtns.innerHTML = "";
@@ -833,12 +840,10 @@ const bindCalcLiveUpdate = () => {
   function renderMain(){
     ensureTodayTarget();
 
-    // ★表示の日付（ヘッダー）は暦どおり（0:00で更新）
     const calNowKey = dateKeyCalendar(new Date());
     const calNow = parseDateKey(calNowKey);
     todayStr.textContent = `${calNow.getFullYear()}/${calNow.getMonth()+1}/${calNow.getDate()}`;
 
-    // 入力可否は「集計日」で判断
     const isToday = (viewingDateKey === dateKeyLocal());
     const rec = getRecord(viewingDateKey, isToday);
 
@@ -870,10 +875,13 @@ const bindCalcLiveUpdate = () => {
     barFill.style.width = `${pct}%`;
     statusMsg.textContent = statusText(taken, target);
     renderLog(rec, logBody);
+
+    // ★内訳表示は「確定している state.profile」の計算
     const c = computeTarget(state.profile);
     baseMlEl.textContent = `${c.baseMl.toLocaleString()} ml`;
     bathAddMlEl.textContent = `${c.bathAddMl.toLocaleString()} ml`;
     sumMlEl.textContent = `${c.totalMl.toLocaleString()} ml`;
+
     setInteractiveEnabled(isToday);
 
     modeHint.textContent = isToday
@@ -897,7 +905,6 @@ const bindCalcLiveUpdate = () => {
     rec.entries.push({ t: Date.now(), ml });
     saveState();
 
-    // 追加したら表示側も「今の暦日」を指すように保つ（ズレ対策）
     viewingCalendarKey = dateKeyCalendar(new Date());
 
     renderMain();
@@ -943,10 +950,8 @@ const bindCalcLiveUpdate = () => {
         const d = new Date(start); d.setDate(start.getDate() + week*7 + i);
         const inMonth = (d.getMonth() === calYearMonth.m);
 
-        // 表示は暦日
         const calKey = dateKeyCalendar(d);
 
-        // データ参照は基準時間（安定のため正午）
         const dForKey = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
         const dataKey = dateKeyLocal(dForKey);
 
@@ -960,8 +965,8 @@ const bindCalcLiveUpdate = () => {
         cell.innerHTML = `<div class="calDay"><span class="mono">${d.getDate()}</span></div><div class="calMeta">${rec ? `<div class="mono">${taken.toLocaleString()} ml</div><div class="${badgeClass(pct)} mono">${pct}%</div>` : `—`}</div>`;
 
         cell.onclick = () => {
-          viewingCalendarKey = calKey; // 画面上の「日付（暦）」
-          viewingDateKey = dataKey;    // 集計/記録の「日付（基準時間）」
+          viewingCalendarKey = calKey;
+          viewingDateKey = dataKey;
           renderMain();
           buildCalendar();
           renderSelectedDay();
@@ -974,10 +979,7 @@ const bindCalcLiveUpdate = () => {
   }
 
   function renderSelectedDay(){
-    // ★選択日表示は暦どおり
     selDate.textContent = fmtYMD(viewingCalendarKey);
-
-    // 入力可否は集計日で判断
     selMode.textContent = (viewingDateKey === dateKeyLocal()) ? "（今日：入力可）" : "（過去：閲覧）";
 
     const rec = getRecord(viewingDateKey, false);
@@ -1000,9 +1002,12 @@ const bindCalcLiveUpdate = () => {
 
   const toggle = (el, show) => el.classList.toggle("open", show);
 
+  // ====== 設定モーダル open/close ======
   $("openSettings").onclick = () => { applyProfileToSettings(); renderQuickEditor(); toggle(settingsOverlay, true); };
   $("btnEditTarget").onclick = () => { applyProfileToSettings(); renderQuickEditor(); toggle(settingsOverlay, true); };
-  $("closeSettings").onclick = () => toggle(settingsOverlay, false);
+
+  // ★閉じたら tempProfile は破棄（確定しない）
+  $("closeSettings").onclick = () => { toggle(settingsOverlay, false); tempProfile = null; };
 
   $("openHistory").onclick = () => {
     const d = parseDateKey(viewingCalendarKey);
@@ -1030,11 +1035,16 @@ const bindCalcLiveUpdate = () => {
   };
   $("closeKnowledge").onclick = () => toggle(knowledgeOverlay, false);
 
+  // ====== 目標 確定ボタン類（ここでだけ profile を確定させる） ======
   $("applyTargetToday").onclick = () => {
-    readProfileFromSettings();
+    // tempProfile → state.profile を確定
+    renderCalcPreview(); // tempProfile を最新化
+    commitTempProfileToState();
+
     const c = computeTarget(state.profile);
     getRecord(dateKeyLocal(), true).targetMl = c.totalMl;
     saveState();
+
     viewingCalendarKey = dateKeyCalendar(new Date());
     renderMain();
     alert("適用しました");
@@ -1050,11 +1060,15 @@ const bindCalcLiveUpdate = () => {
   };
 
   $("saveTargetDaily").onclick = () => {
-    readProfileFromSettings();
+    renderCalcPreview(); // tempProfile を最新化
+    // tempProfile を確定
+    commitTempProfileToState();
+
     const c = computeTarget(state.profile);
     state.profile.defaultTargetMl = c.totalMl;
     saveState();
     renderDailyDefaultInSettings();
+    renderMain(); // 内訳も更新
     alert("保存しました");
   };
 
@@ -1063,9 +1077,24 @@ const bindCalcLiveUpdate = () => {
     state.profile.defaultTargetMl = ml;
     saveState();
     renderDailyDefaultInSettings();
+    renderMain();
     alert("保存しました");
   };
 
+  // リセット（tempProfile のみ初期化してプレビュー反映。確定はしない）
+  $("resetProfile").onclick = () => {
+    tempProfile = cloneProfile(defaultState().profile);
+    sex.value = tempProfile.sex;
+    height.value = tempProfile.height;
+    weight.value = tempProfile.weight;
+    bathCount.value = tempProfile.bathCount;
+    bathMin.value = tempProfile.bathMin;
+    bathIntensity.value = tempProfile.bathIntensity;
+    renderCalcPreview();
+    alert("入力を初期化しました（※まだ確定していません）");
+  };
+
+  // ====== 基準時間 ======
   dayRolloverPreset.onchange = () => {
     if(dayRolloverPreset.value === "custom"){
       dayRolloverHour.disabled = false;
@@ -1089,7 +1118,6 @@ const bindCalcLiveUpdate = () => {
 
     const last = state.settings.rolloverRules[state.settings.rolloverRules.length - 1];
     if(!last || last.hour !== Number(h)){
-      // ★保存した時刻以降にだけ反映
       state.settings.rolloverRules.push({ fromTs: ts, hour: Number(h) });
       state.settings.rolloverRules.sort((a,b)=>a.fromTs-b.fromTs);
     }
@@ -1097,7 +1125,6 @@ const bindCalcLiveUpdate = () => {
     saveState();
     applyDayRolloverToSettings();
 
-    // 「今」に戻す
     viewingDateKey = dateKeyLocal(new Date());
     viewingCalendarKey = dateKeyCalendar(new Date());
     renderMain();
@@ -1105,6 +1132,7 @@ const bindCalcLiveUpdate = () => {
     alert("保存しました");
   };
 
+  // ====== quick / log / calendar ======
   $("saveQuick").onclick = () => { saveQuickFromEditor(); alert("保存しました"); };
   $("resetQuick").onclick = () => { state.quickAdds = defaultState().quickAdds; saveState(); renderQuickEditor(); renderQuickButtons(); };
   $("addCustom").onclick = () => { addDrink(customAdd.value); customAdd.value = ""; };
@@ -1114,14 +1142,15 @@ const bindCalcLiveUpdate = () => {
   $("nextMonth").onclick = () => { calYearMonth.m++; if(calYearMonth.m>11){calYearMonth.m=0; calYearMonth.y++;} buildCalendar(); };
 
   $("jumpToday").onclick = () => {
-    viewingDateKey = dateKeyLocal();                 // 集計日
-    viewingCalendarKey = dateKeyCalendar(new Date()); // 暦日
+    viewingDateKey = dateKeyLocal();
+    viewingCalendarKey = dateKeyCalendar(new Date());
     calYearMonth = {y:new Date().getFullYear(), m:new Date().getMonth()};
     renderMain();
     buildCalendar();
     renderSelectedDay();
   };
 
+  // ====== backup ======
   $("exportBackupBtn").onclick = () => {
     const blob = new Blob([localStorage.getItem(KEY)], {type:"application/json"});
     const a = document.createElement("a");
