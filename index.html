@@ -773,6 +773,19 @@
     calcBath.textContent = `${c.bathAddMl.toLocaleString()} ml`;
     calcTotal.textContent = `${c.totalMl.toLocaleString()} ml`;
   }
+const bindCalcLiveUpdate = () => {
+    const onAnyChange = () => renderCalcPreview();
+
+    sex.addEventListener("change", onAnyChange);
+
+    height.addEventListener("input", onAnyChange);
+    weight.addEventListener("input", onAnyChange);
+
+    bathCount.addEventListener("input", onAnyChange);
+    bathMin.addEventListener("input", onAnyChange);
+
+    bathIntensity.addEventListener("input", onAnyChange);
+  };
 
   function renderQuickButtons(){
     quickBtns.innerHTML = "";
