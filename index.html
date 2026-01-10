@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>URUOI 水分管理 </title>
   <link rel="apple-touch-icon" href="icon.png">
-<link rel="icon" type="image/png" href="icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="URUOI">
+  <link rel="icon" type="image/png" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="URUOI">
 
   <style>
     :root{
@@ -19,19 +19,19 @@
     *{ box-sizing:border-box; }
     body{ margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
       background: radial-gradient(1200px 800px at 20% 0%, #122040, var(--bg)); color:var(--text); }
-    
+
     /* ヘッダーのレイアウト修正 */
     header{ padding:12px 12px 8px; max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:8px; }
     @media (min-width: 600px){ header{ flex-direction:row; align-items:center; justify-content:space-between; } }
-    
+
     .header-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
     header h1{ margin:0; font-size:16px; letter-spacing:.5px; white-space:nowrap; }
-    
+
     header .right{ display:flex; gap:4px; align-items:center; justify-content:flex-end; }
     header .right button{ padding:6px 8px; font-size:11px; border-radius:8px; white-space:nowrap; }
-    
+
     .pill{ display:inline-flex; align-items:center; gap:8px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); background:var(--chip); color:var(--text); font-size:11px; }
-    
+
     main{ padding:12px 16px 24px; display:grid; gap:12px; max-width:980px; margin:0 auto; }
     .grid{ display:grid; gap:12px; grid-template-columns:1fr; }
     @media (min-width: 900px){ .grid{ grid-template-columns: 1.2fr .8fr; } }
@@ -267,6 +267,33 @@
             <button class="primary" id="applyManualTargetToday">手入力を「今日の目標」に適用</button>
             <button class="primary" id="saveManualTargetDaily">手入力を「毎日の目標」に保存</button>
           </div>
+
+          <div style="height:16px"></div>
+          <h2>日付の区切り（集計の基準時間）</h2>
+          <div class="row">
+            <div style="min-width:220px">
+              <label>更新タイミング</label>
+              <select id="dayRolloverPreset">
+                <option value="4">4時更新（デフォルト）</option>
+                <option value="0">24時更新（0時）</option>
+                <option value="custom">カスタム</option>
+              </select>
+            </div>
+            <div>
+              <label>カスタム時刻 (0〜23)</label>
+              <input id="dayRolloverHour" type="number" inputmode="numeric" min="0" max="23" step="1" value="4">
+            </div>
+            <button class="primary" id="applyDayRollover">保存</button>
+          </div>
+          <div class="pill" style="margin-top:10px">
+            <span>現在の区切り</span><span class="mono" id="rolloverCurrent">--</span>
+          </div>
+          <div class="hint">
+            ここで変えるのは「集計の基準時間」です。<br>
+            画面上の日付（YYYY/MM/DD表示）は、暦どおり 0:00 で必ず切り替わります。<br>
+            ※基準時間の変更は「保存した時刻以降」にだけ反映されます（過去データは変えません）。
+          </div>
+
         </section>
         <section class="card" style="box-shadow:none">
           <h2>クイックボタン</h2>
@@ -362,7 +389,7 @@
     { id: 3,  text: "何もしてなくても、人は1日に結構な量の水分を失ってるんだ。（※呼吸や皮ふからの蒸発だけで、1日約500ml以上失われると言われています）" },
     { id: 4,  text: "体の中の水分が少し減るだけでも、集中力や判断力は落ちやすくなるんだ。（※体重の1〜2%の水分不足で、パフォーマンス低下が起こるとされています）" },
     { id: 5,  text: "汗をかいていなくても、水分は静かに失われ続けてるんだよ。（※発汗が少ない季節でも、水分喪失量は大きく変わりません）" },
-    { id: 6,  text: "軽い水不足は、体が慣れてしまって気づきにくいのがやっかいんだ。（※慢性的な軽度脱水は自覚症状が出にくいとされています）" },
+    { id: 6,  text: "軽い水不足は、体が慣れてしまって気づいてきにくいのがやっかいんだ。（※慢性的な軽度脱水は自覚症状が出にくいとされています）" },
     { id: 7,  text: "水分が足りないと、体はまず“節約モード”に入るんだ。（※血流量や発汗量を抑える反応が起こります）" },
     { id: 8,  text: "年齢を重ねると、喉の渇きを感じにくくなることがあるんだ。（※加齢により渇きの感受性が低下することが知られています）" },
     { id: 9,  text: "水分は一気に摂るより、分けて摂ったほうが体に残りやすいんだ。（※短時間に大量摂取すると排出が早くなりやすいです）" },
@@ -424,10 +451,21 @@
     profile: { sex:"male", height:170, weight:65, bathCount:1, bathMin:20, bathIntensity:1, defaultTargetMl: null },
     quickAdds: [150, 200, 250, 350, 500],
     daily: {},
-    knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" }
+    knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" },
+    settings: {
+      // fromTs以降は hour の基準時間で集計する（変更は保存時刻以降だけ反映）
+      rolloverRules: [{ fromTs: 0, hour: 4 }]
+    }
   });
 
   const $ = (id) => document.getElementById(id);
+
+  function clamp(n,min,max){
+    n=Number(n);
+    if(Number.isNaN(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+  function round10(n){ return Math.round(n/10)*10; }
 
   function loadState(){
     try{
@@ -439,6 +477,22 @@
       if(!Array.isArray(s.quickAdds)) s.quickAdds = defaultState().quickAdds;
       if(!s.daily) s.daily = {};
       if(!s.knowledge) s.knowledge = defaultState().knowledge;
+
+      // settings移行/補正
+      if(!s.settings) s.settings = defaultState().settings;
+
+      // 旧形式の dayRolloverHour があった場合も rolloverRules に移行
+      if(Array.isArray(s.settings.rolloverRules) && s.settings.rolloverRules.length > 0){
+        // ok
+      }else{
+        const oldHour = Number.isFinite(s.settings.dayRolloverHour) ? Number(s.settings.dayRolloverHour) : 4;
+        s.settings.rolloverRules = [{ fromTs: 0, hour: clamp(oldHour,0,23) }];
+      }
+
+      s.settings.rolloverRules = s.settings.rolloverRules
+        .map(r => ({ fromTs: Number(r.fromTs||0), hour: clamp(r.hour,0,23) }))
+        .sort((a,b)=>a.fromTs-b.fromTs);
+
       return s;
     }catch{
       return defaultState();
@@ -446,14 +500,32 @@
   }
   function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
+  function getRolloverHourForTs(ts){
+    const rules = state?.settings?.rolloverRules;
+    if(!Array.isArray(rules) || rules.length === 0) return 4;
+    let h = (rules[0].hour ?? 4);
+    for(const r of rules){
+      if(ts >= r.fromTs) h = r.hour;
+      else break;
+    }
+    return clamp(h, 0, 23);
+  }
+
+  // データ用キー（基準時間で日付が変わる）
   function dateKeyLocal(d=new Date()){
-    const y=d.getFullYear();
-    const m=String(d.getMonth()+1).padStart(2,"0");
-    const day=String(d.getDate()).padStart(2,"0");
+    const ts = d.getTime();
+    const h = getRolloverHourForTs(ts);
+
+    const dd = new Date(d);
+    dd.setHours(dd.getHours() - h);
+
+    const y=dd.getFullYear();
+    const m=String(dd.getMonth()+1).padStart(2,"0");
+    const day=String(dd.getDate()).padStart(2,"0");
     return `${y}-${m}-${day}`;
   }
 
-  // ★追加：表示用（暦どおり 0:00 で変わる日付キー）
+  // 表示用キー（暦どおり 0:00 で日付が変わる）
   function dateKeyCalendar(d=new Date()){
     const y=d.getFullYear();
     const m=String(d.getMonth()+1).padStart(2,"0");
@@ -475,12 +547,7 @@
     const mm=String(d.getMinutes()).padStart(2,"0");
     return `${hh}:${mm}`;
   }
-  function clamp(n,min,max){
-    n=Number(n);
-    if(Number.isNaN(n)) return min;
-    return Math.max(min, Math.min(max, n));
-  }
-  function round10(n){ return Math.round(n/10)*10; }
+
   function intensityFactor(v){
     v=Number(v);
     if(v===0) return 0.7;
@@ -537,7 +604,7 @@
   }
 
   function awardKnowledgeIfAchieved() {
-    const today = dateKeyLocal();
+    const today = dateKeyLocal(); // スタンプ判定は「集計日」
     if (state.knowledge.awardedByDate[today]) return;
     const rec = getRecord(today, false);
     if(!rec) return;
@@ -558,7 +625,7 @@
       }
     }
     if (!id) id = KNOWLEDGE_FACTS.map(f => f.id).find(i => !state.knowledge.unlocked.includes(i));
-    
+
     if (id) {
       state.knowledge.unlocked.push(id);
       state.knowledge.awardedByDate[today] = id;
@@ -570,8 +637,21 @@
     }
   }
 
+  function formatRolloverLabel(h){
+    h = clamp(h,0,23);
+    if(h===0) return "24時更新（0時）";
+    if(h===4) return "4時更新";
+    return `${h}時更新`;
+  }
+
   let state = loadState();
+
+  // データの閲覧先（集計日）
   let viewingDateKey = dateKeyLocal();
+
+  // 表示の閲覧先（暦日）
+  let viewingCalendarKey = dateKeyCalendar(new Date());
+
   let calYearMonth = (() => { const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
 
   const todayStr = $("todayStr");
@@ -613,9 +693,29 @@
   const knowledgeOverlay = $("knowledgeOverlay");
   const dailyDefaultMlEl = $("dailyDefaultMl");
 
+  const dayRolloverPreset = $("dayRolloverPreset");
+  const dayRolloverHour = $("dayRolloverHour");
+  const rolloverCurrent = $("rolloverCurrent");
+
   function renderDailyDefaultInSettings(){
     const v = state.profile.defaultTargetMl;
     dailyDefaultMlEl.textContent = (typeof v === "number" && v > 0) ? `${v.toLocaleString()} ml` : "未設定";
+  }
+
+  function applyDayRolloverToSettings(){
+    const h = getRolloverHourForTs(Date.now());
+    rolloverCurrent.textContent = `${formatRolloverLabel(h)}（${h}）`;
+    if(h === 4){
+      dayRolloverPreset.value = "4";
+      dayRolloverHour.value = 4;
+    }else if(h === 0){
+      dayRolloverPreset.value = "0";
+      dayRolloverHour.value = 0;
+    }else{
+      dayRolloverPreset.value = "custom";
+      dayRolloverHour.value = h;
+    }
+    dayRolloverHour.disabled = (dayRolloverPreset.value !== "custom");
   }
 
   function ensureTodayTarget(){
@@ -642,6 +742,7 @@
     bathIntensityLabelEl.textContent = intensityLabel(bathIntensity.value);
     renderCalcPreview();
     renderDailyDefaultInSettings();
+    applyDayRolloverToSettings();
   }
 
   function readProfileFromSettings(){
@@ -675,7 +776,7 @@
 
   function renderQuickButtons(){
     quickBtns.innerHTML = "";
-    state.quickAdds.forEach((ml, idx) => {
+    state.quickAdds.forEach((ml) => {
       const b = document.createElement("button");
       b.className = (ml >= 500) ? "warn" : "good";
       b.textContent = `+${Number(ml).toLocaleString()}ml`;
@@ -719,11 +820,12 @@
   function renderMain(){
     ensureTodayTarget();
 
-    // ★修正：表示の日付（ヘッダー）は暦どおり（0:00で更新）
-    const calKey = dateKeyCalendar(new Date());
-    const calNow = parseDateKey(calKey);
+    // ★表示の日付（ヘッダー）は暦どおり（0:00で更新）
+    const calNowKey = dateKeyCalendar(new Date());
+    const calNow = parseDateKey(calNowKey);
     todayStr.textContent = `${calNow.getFullYear()}/${calNow.getMonth()+1}/${calNow.getDate()}`;
 
+    // 入力可否は「集計日」で判断
     const isToday = (viewingDateKey === dateKeyLocal());
     const rec = getRecord(viewingDateKey, isToday);
 
@@ -740,7 +842,7 @@
       bathAddMlEl.textContent = `--`;
       sumMlEl.textContent = `--`;
       setInteractiveEnabled(false);
-      modeHint.textContent = `閲覧中：${fmtYMD(viewingDateKey)}（データなし）`;
+      modeHint.textContent = `閲覧中：${fmtYMD(viewingCalendarKey)}（データなし）`;
       return;
     }
 
@@ -760,7 +862,10 @@
     bathAddMlEl.textContent = `${c.bathAddMl.toLocaleString()} ml`;
     sumMlEl.textContent = `${c.totalMl.toLocaleString()} ml`;
     setInteractiveEnabled(isToday);
-    modeHint.textContent = isToday ? `入力モード：今日（追加/戻すが有効）` : `閲覧モード：${fmtYMD(viewingDateKey)}（追加不可）`;
+
+    modeHint.textContent = isToday
+      ? `入力モード：今日（追加/戻すが有効）`
+      : `閲覧モード：${fmtYMD(viewingCalendarKey)}（追加不可）`;
   }
 
   function setInteractiveEnabled(enabled){
@@ -778,6 +883,10 @@
     const rec = getRecord(dateKeyLocal(), true);
     rec.entries.push({ t: Date.now(), ml });
     saveState();
+
+    // 追加したら表示側も「今の暦日」を指すように保つ（ズレ対策）
+    viewingCalendarKey = dateKeyCalendar(new Date());
+
     renderMain();
     awardKnowledgeIfAchieved();
   }
@@ -788,6 +897,7 @@
     if(rec.entries.length===0) return;
     rec.entries.pop();
     saveState();
+    viewingCalendarKey = dateKeyCalendar(new Date());
     renderMain();
   }
 
@@ -796,34 +906,54 @@
     delete state.daily[dateKeyLocal()];
     saveState();
     ensureTodayTarget();
+    viewingCalendarKey = dateKeyCalendar(new Date());
     renderMain();
   }
 
   function buildCalendar(){
     calTitle.textContent = `${calYearMonth.y}/${calYearMonth.m+1}`;
     calGrid.innerHTML = "";
+
     const head = document.createElement("div");
     head.className = "calRow calHead";
     ["日","月","火","水","木","金","土"].forEach(s => {
       const d=document.createElement("div"); d.textContent=s; head.appendChild(d);
     });
     calGrid.appendChild(head);
+
     const first = new Date(calYearMonth.y, calYearMonth.m, 1);
     const start = new Date(calYearMonth.y, calYearMonth.m, 1 - first.getDay());
+
     for(let week=0; week<6; week++){
       const row = document.createElement("div"); row.className = "calRow";
       for(let i=0;i<7;i++){
         const d = new Date(start); d.setDate(start.getDate() + week*7 + i);
         const inMonth = (d.getMonth() === calYearMonth.m);
-        const key = dateKeyLocal(d);
-        const rec = getRecord(key, false);
+
+        // 表示は暦日
+        const calKey = dateKeyCalendar(d);
+
+        // データ参照は基準時間（安定のため正午）
+        const dForKey = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+        const dataKey = dateKeyLocal(dForKey);
+
+        const rec = getRecord(dataKey, false);
         const taken = rec ? sumTaken(rec.entries) : 0;
         const target = rec && typeof rec.targetMl==="number" ? rec.targetMl : 0;
         const pct = (rec && target>0) ? Math.round((taken/target)*100) : 0;
+
         const cell = document.createElement("div");
-        cell.className = "calCell" + (inMonth ? "" : " dim") + (key === viewingDateKey ? " selected" : "");
+        cell.className = "calCell" + (inMonth ? "" : " dim") + (calKey === viewingCalendarKey ? " selected" : "");
         cell.innerHTML = `<div class="calDay"><span class="mono">${d.getDate()}</span></div><div class="calMeta">${rec ? `<div class="mono">${taken.toLocaleString()} ml</div><div class="${badgeClass(pct)} mono">${pct}%</div>` : `—`}</div>`;
-        cell.onclick = () => { viewingDateKey = key; renderMain(); buildCalendar(); renderSelectedDay(); };
+
+        cell.onclick = () => {
+          viewingCalendarKey = calKey; // 画面上の「日付（暦）」
+          viewingDateKey = dataKey;    // 集計/記録の「日付（基準時間）」
+          renderMain();
+          buildCalendar();
+          renderSelectedDay();
+        };
+
         row.appendChild(cell);
       }
       calGrid.appendChild(row);
@@ -831,16 +961,21 @@
   }
 
   function renderSelectedDay(){
-    // ★修正：選択日の表示も暦どおり（0:00で変わる「見た目」）
-    const d = parseDateKey(viewingDateKey);
-    selDate.textContent = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+    // ★選択日表示は暦どおり
+    selDate.textContent = fmtYMD(viewingCalendarKey);
 
+    // 入力可否は集計日で判断
     selMode.textContent = (viewingDateKey === dateKeyLocal()) ? "（今日：入力可）" : "（過去：閲覧）";
+
     const rec = getRecord(viewingDateKey, false);
     if(!rec){
-      selTarget.textContent = `--`; selTaken.textContent = `--`; selPct.textContent = `--`; selLogBody.innerHTML = `<tr><td colspan="3" class="muted">データがありません。</td></tr>`;
+      selTarget.textContent = `--`;
+      selTaken.textContent = `--`;
+      selPct.textContent = `--`;
+      selLogBody.innerHTML = `<tr><td colspan="3" class="muted">データがありません。</td></tr>`;
       return;
     }
+
     const taken = sumTaken(rec.entries);
     const target = rec.targetMl || 0;
     const pct = target ? Math.round((taken/target)*100) : 0;
@@ -851,11 +986,20 @@
   }
 
   const toggle = (el, show) => el.classList.toggle("open", show);
+
   $("openSettings").onclick = () => { applyProfileToSettings(); renderQuickEditor(); toggle(settingsOverlay, true); };
   $("btnEditTarget").onclick = () => { applyProfileToSettings(); renderQuickEditor(); toggle(settingsOverlay, true); };
   $("closeSettings").onclick = () => toggle(settingsOverlay, false);
-  $("openHistory").onclick = () => { const d = parseDateKey(viewingDateKey); calYearMonth = { y: d.getFullYear(), m: d.getMonth() }; buildCalendar(); renderSelectedDay(); toggle(historyOverlay, true); };
+
+  $("openHistory").onclick = () => {
+    const d = parseDateKey(viewingCalendarKey);
+    calYearMonth = { y: d.getFullYear(), m: d.getMonth() };
+    buildCalendar();
+    renderSelectedDay();
+    toggle(historyOverlay, true);
+  };
   $("closeHistory").onclick = () => toggle(historyOverlay, false);
+
   $("openKnowledge").onclick = () => {
     const k = state.knowledge;
     const todayId = k.awardedByDate[dateKeyLocal()];
@@ -873,8 +1017,24 @@
   };
   $("closeKnowledge").onclick = () => toggle(knowledgeOverlay, false);
 
-  $("applyTargetToday").onclick = () => { readProfileFromSettings(); const c = computeTarget(state.profile); getRecord(dateKeyLocal(), true).targetMl = c.totalMl; saveState(); renderMain(); alert("適用しました"); };
-  $("applyManualTargetToday").onclick = () => { const ml = round10(clamp($("manualTargetMl").value, 500, 10000)); getRecord(dateKeyLocal(), true).targetMl = ml; saveState(); renderMain(); alert("適用しました"); };
+  $("applyTargetToday").onclick = () => {
+    readProfileFromSettings();
+    const c = computeTarget(state.profile);
+    getRecord(dateKeyLocal(), true).targetMl = c.totalMl;
+    saveState();
+    viewingCalendarKey = dateKeyCalendar(new Date());
+    renderMain();
+    alert("適用しました");
+  };
+
+  $("applyManualTargetToday").onclick = () => {
+    const ml = round10(clamp($("manualTargetMl").value, 500, 10000));
+    getRecord(dateKeyLocal(), true).targetMl = ml;
+    saveState();
+    viewingCalendarKey = dateKeyCalendar(new Date());
+    renderMain();
+    alert("適用しました");
+  };
 
   $("saveTargetDaily").onclick = () => {
     readProfileFromSettings();
@@ -884,11 +1044,51 @@
     renderDailyDefaultInSettings();
     alert("保存しました");
   };
+
   $("saveManualTargetDaily").onclick = () => {
     const ml = round10(clamp($("manualTargetMl").value, 500, 10000));
     state.profile.defaultTargetMl = ml;
     saveState();
     renderDailyDefaultInSettings();
+    alert("保存しました");
+  };
+
+  dayRolloverPreset.onchange = () => {
+    if(dayRolloverPreset.value === "custom"){
+      dayRolloverHour.disabled = false;
+    }else{
+      dayRolloverHour.disabled = true;
+      dayRolloverHour.value = Number(dayRolloverPreset.value);
+    }
+  };
+
+  $("applyDayRollover").onclick = () => {
+    let h;
+    if(dayRolloverPreset.value === "custom"){
+      h = clamp(dayRolloverHour.value, 0, 23);
+      dayRolloverHour.value = h;
+    }else{
+      h = Number(dayRolloverPreset.value);
+    }
+
+    const ts = Date.now();
+    if(!Array.isArray(state.settings.rolloverRules)) state.settings.rolloverRules = [{fromTs:0, hour:4}];
+
+    const last = state.settings.rolloverRules[state.settings.rolloverRules.length - 1];
+    if(!last || last.hour !== Number(h)){
+      // ★保存した時刻以降にだけ反映
+      state.settings.rolloverRules.push({ fromTs: ts, hour: Number(h) });
+      state.settings.rolloverRules.sort((a,b)=>a.fromTs-b.fromTs);
+    }
+
+    saveState();
+    applyDayRolloverToSettings();
+
+    // 「今」に戻す
+    viewingDateKey = dateKeyLocal(new Date());
+    viewingCalendarKey = dateKeyCalendar(new Date());
+    renderMain();
+
     alert("保存しました");
   };
 
@@ -899,11 +1099,35 @@
   $("setTaken0").onclick = () => { if(confirm("初期化しますか？")) resetToday(); };
   $("prevMonth").onclick = () => { calYearMonth.m--; if(calYearMonth.m<0){calYearMonth.m=11; calYearMonth.y--;} buildCalendar(); };
   $("nextMonth").onclick = () => { calYearMonth.m++; if(calYearMonth.m>11){calYearMonth.m=0; calYearMonth.y++;} buildCalendar(); };
-  $("jumpToday").onclick = () => { viewingDateKey = dateKeyLocal(); calYearMonth = {y:new Date().getFullYear(), m:new Date().getMonth()}; renderMain(); buildCalendar(); renderSelectedDay(); };
 
-  $("exportBackupBtn").onclick = () => { const blob = new Blob([localStorage.getItem(KEY)], {type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "uruoi_backup.json"; a.click(); };
+  $("jumpToday").onclick = () => {
+    viewingDateKey = dateKeyLocal();                 // 集計日
+    viewingCalendarKey = dateKeyCalendar(new Date()); // 暦日
+    calYearMonth = {y:new Date().getFullYear(), m:new Date().getMonth()};
+    renderMain();
+    buildCalendar();
+    renderSelectedDay();
+  };
+
+  $("exportBackupBtn").onclick = () => {
+    const blob = new Blob([localStorage.getItem(KEY)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "uruoi_backup.json";
+    a.click();
+  };
   $("importBackupBtn").onclick = () => $("importBackupInput").click();
-  $("importBackupInput").onchange = (e) => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => { localStorage.setItem(KEY, r.result); alert("再読み込みします"); location.reload(); }; r.readAsText(f); };
+  $("importBackupInput").onchange = (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      localStorage.setItem(KEY, r.result);
+      alert("再読み込みします");
+      location.reload();
+    };
+    r.readAsText(f);
+  };
 
   renderQuickButtons();
   renderMain();
