@@ -421,7 +421,7 @@
     { id: 36, text: "地上で一番水を飲む動物、誰だと思う？👉 ゾウなんだ。（※1日に100リットル以上飲むこともあります）" },
     { id: 37, text: "トイレの回数、実は水分足りてるかのサインなんだ。（※健康な成人では1日5〜7回程度が目安とされます）" },
     { id: 38, text: "おしっこの色でも、水分状態がだいたい分かるんだよ。（※薄い黄色〜透明寄り＝足りてる、濃い黄色＝不足サイン）" },
-    { id: 39, text: "冬も水分補給、実はかなり大事なんだ。（※寒いと渇きを感じにくく、暖房で水分が失われやすい）" },
+    { id: 39, text: "冬も水分補給、実はかなり大事んだ。（※寒いと渇きを感じにくく、暖房で水分が失われやすい）" },
     { id: 40, text: "風邪をひいた時こそ、水分はめちゃくちゃ重要んだ。（※呼吸の増加・鼻水などで水分消費が増える）" },
     { id: 41, text: "水を飲むと、体温調整がスムーズになるんだ。（※血流と発汗が働きやすくなる）" },
     { id: 42, text: "体がだるい日の原因、実は水不足のことも多いんだ。（※軽度脱水は疲労感として現れやすい）" },
@@ -452,8 +452,7 @@
     daily: {},
     knowledge: { unlocked: [], awardedByDate: {}, seriesIndex: {}, activeSeries: "A" },
     settings: {
-      // 今日以降のみ反映できるように、区切りルールを履歴として保持する
-      rolloverRules: [{ fromTs: 0, hour: 4 }] // デフォルト4時更新
+      rolloverRules: [{ fromTs: 0, hour: 4 }]
     }
   });
 
@@ -477,10 +476,8 @@
       if(!s.daily) s.daily = {};
       if(!s.knowledge) s.knowledge = defaultState().knowledge;
 
-      // settings の補完（旧形式 dayRolloverHour 互換も含む）
       if(!s.settings) s.settings = defaultState().settings;
       if(Array.isArray(s.settings.rolloverRules) && s.settings.rolloverRules.length > 0){
-        // OK
       }else{
         const oldHour = Number.isFinite(s.settings.dayRolloverHour) ? Number(s.settings.dayRolloverHour) : 4;
         s.settings.rolloverRules = [{ fromTs: 0, hour: clamp(oldHour,0,23) }];
@@ -800,8 +797,11 @@
 
   function renderMain(){
     ensureTodayTarget();
-    const now = parseDateKey(viewingDateKey);
-    todayStr.textContent = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
+    
+    // 修正箇所: ヘッダーの日付表示は常に「今」の暦の日付を表示する
+    const realNow = new Date();
+    todayStr.textContent = `${realNow.getFullYear()}/${realNow.getMonth()+1}/${realNow.getDate()}`;
+    
     const isToday = (viewingDateKey === dateKeyLocal());
     const rec = getRecord(viewingDateKey, isToday);
 
@@ -894,8 +894,7 @@
         const d = new Date(start); d.setDate(start.getDate() + week*7 + i);
         const inMonth = (d.getMonth() === calYearMonth.m);
 
-        // カレンダー日付は「その日の23:59」を使ってキー化（区切りが23時でもズレない）
-        const dForKey = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 0, 0);
+        const dForKey = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
         const key = dateKeyLocal(dForKey);
 
         const rec = getRecord(key, false);
@@ -1001,7 +1000,6 @@
     saveState();
     applyDayRolloverToSettings();
 
-    // 表示は新ルールに追随（切り替えで「今日」が変わり得る）
     viewingDateKey = dateKeyLocal(new Date());
     renderMain();
 
