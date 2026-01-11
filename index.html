@@ -373,6 +373,29 @@
     <input id="importBackupInput" type="file" accept="application/json" style="display:none;">
     <button id="importBackupBtn" type="button">バックアップを読み込む</button>
   </label>
+
+  <!-- ★追加：評価用テキストをコピー -->
+  <button id="copyEvalLongBtn" type="button">評価用テキスト（長期）をコピー</button>
+  <button id="copyEval7dBtn" type="button">評価用テキスト（直近7日）をコピー</button>
+</div>
+
+<!-- ★追加：コピー失敗時の手動コピー用 -->
+<div class="overlay" id="copyOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="コピー用テキスト">
+    <div class="modalHeader">
+      <h3>コピー用テキスト</h3>
+      <div class="btns" style="margin:0">
+        <button id="closeCopyOverlay">閉じる</button>
+      </div>
+    </div>
+    <div class="modalBody">
+      <div class="hint">自動コピーができない場合は、下のテキストを長押しで全選択してコピーしてください。</div>
+      <textarea id="copyTextArea" style="width:100%; min-height:260px; padding:12px; border-radius:12px; border:1px solid var(--line); background:var(--chip); color:var(--text); font:inherit;"></textarea>
+      <div class="btns" style="margin-top:8px">
+        <button class="primary" id="tryCopyAgainBtn">もう一度コピー</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1169,6 +1192,281 @@
       location.reload();
     };
     r.readAsText(f);
+  };
+
+  // =========================
+  // ★追加：評価用テキスト出力（長期 / 直近7日） + コピー
+  // =========================
+
+  const copyOverlay = $("copyOverlay");
+  const copyTextArea = $("copyTextArea");
+  const closeCopyOverlay = $("closeCopyOverlay");
+  const tryCopyAgainBtn = $("tryCopyAgainBtn");
+
+  let lastCopyText = "";
+
+  function openCopyModal(text){
+    lastCopyText = text;
+    copyTextArea.value = text;
+    toggle(copyOverlay, true);
+    setTimeout(() => {
+      copyTextArea.focus();
+      copyTextArea.select();
+    }, 0);
+  }
+
+  closeCopyOverlay.onclick = () => toggle(copyOverlay, false);
+
+  async function copyToClipboardOrShow(text){
+    lastCopyText = text;
+
+    try{
+      if(navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(text);
+        alert("コピーしました");
+        return true;
+      }
+    }catch(e){
+      // fallthrough
+    }
+
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if(ok){
+        alert("コピーしました");
+        return true;
+      }
+    }catch(e){
+      // fallthrough
+    }
+
+    openCopyModal(text);
+    return false;
+  }
+
+  tryCopyAgainBtn.onclick = async () => {
+    if(!lastCopyText) return;
+    await copyToClipboardOrShow(lastCopyText);
+  };
+
+  function formatYMDSlash(d){
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}/${m}/${day}`;
+  }
+
+  function getAllRecordKeys(){
+    return Object.keys(state.daily || {}).sort();
+  }
+
+  function computeDailyStats(pcts){
+    if(pcts.length === 0){
+      return {
+        avg: null, median: null, min: null, max: null, stddev: null
+      };
+    }
+
+    const arr = pcts.slice().sort((a,b)=>a-b);
+    const sum = arr.reduce((a,b)=>a+b, 0);
+    const avg = sum / arr.length;
+
+    const mid = Math.floor(arr.length/2);
+    const median = (arr.length % 2 === 0) ? (arr[mid-1] + arr[mid]) / 2 : arr[mid];
+
+    const min = arr[0];
+    const max = arr[arr.length-1];
+
+    const variance = arr.reduce((acc, x) => acc + Math.pow(x-avg, 2), 0) / arr.length;
+    const stddev = Math.sqrt(variance);
+
+    return { avg, median, min, max, stddev };
+  }
+
+  function buildEvalTextLongTerm(){
+    const keys = getAllRecordKeys().filter(k => {
+      const rec = state.daily[k];
+      return rec && Array.isArray(rec.entries) && rec.entries.length > 0;
+    });
+
+    const recordDays = keys.length;
+    const allDays = getAllRecordKeys().length;
+
+    const pcts = [];
+    let achievedDays = 0;
+
+    let start = null;
+    let end = null;
+
+    for(const k of keys){
+      const rec = state.daily[k];
+      const taken = sumTaken(rec.entries);
+      const target = (typeof rec.targetMl === "number" && rec.targetMl > 0) ? rec.targetMl : 0;
+      const pct = (target > 0) ? (taken/target)*100 : 0;
+
+      pcts.push(pct);
+      if(pct >= 100) achievedDays++;
+
+      const d = parseDateKey(k);
+      if(!start || d < start) start = d;
+      if(!end || d > end) end = d;
+    }
+
+    const stats = computeDailyStats(pcts);
+    const sexText = (state.profile.sex === "female") ? "女性" : "男性";
+    const weightKg = (Number.isFinite(Number(state.profile.weight)) ? Number(state.profile.weight) : "");
+
+    const periodText = (start && end)
+      ? `${formatYMDSlash(start)} ～ ${formatYMDSlash(end)}`
+      : `（記録なし）`;
+
+    const pctAvg = (stats.avg == null) ? "—" : `${stats.avg.toFixed(1)} %`;
+    const pctMed = (stats.median == null) ? "—" : `${stats.median.toFixed(1)} %`;
+
+    const pctStd = (stats.stddev == null) ? "—" : `${stats.stddev.toFixed(1)} %`;
+    const pctMinMax = (stats.min == null) ? "—" : `最大 ${stats.max.toFixed(1)}% / 最小 ${stats.min.toFixed(1)}%`;
+
+    const achieveRate = (recordDays === 0) ? "—" : `${((achievedDays/recordDays)*100).toFixed(1)} %`;
+    const recordHint = `記録日数 ${recordDays}日（全データ日数 ${allDays}日）`;
+
+    return [
+`【水分管理・長期評価の依頼】
+
+以下は、水分管理アプリで記録された「これまでの全期間」の集計データです。
+このデータをもとに、水分摂取習慣について評価してください。
+
+▼前提条件
+・性別：${sexText}
+・体重：${weightKg}kg
+・評価期間：${periodText}
+・この評価では「摂取時間」は考慮せず、量と達成状況のみを見てください。
+・記録がない日については、忙しさや生活状況の影響も考えられるため、飲んでいないと決めつけず、評価対象外として扱ってください。
+
+▼集計データ
+・${recordHint}
+・達成率の平均：${pctAvg}
+・達成率の中央値：${pctMed}
+・達成率のばらつき（標準偏差）：${pctStd}
+・達成率の最大/最小：${pctMinMax}
+・目標達成率：${achieveRate}（達成 ${achievedDays}日 ÷ 記録 ${recordDays}日）
+
+▼評価してほしい観点
+1. 全体的な達成率の水準
+2. 日ごとの安定性（ばらつきの大きさ）
+3. 習慣として定着しているかどうか
+4. 現在の目標摂取量が、行動量に対して妥当そうかどうか
+　※「達成できていない＝目標が悪い」と断定しないでください。
+
+▼評価時のトーンについて
+・責める表現や断定は避けてください。
+・データ不足の場合は、無理に評価せず「判断が難しい」と伝えてください。
+・週単位・月単位・年単位で意味がある場合のみ言及してください。
+・季節や環境要因の影響は「可能性」として触れてください。
+
+▼出力してほしい内容
+・総合的な長期評価
+・数値から読み取れる傾向
+・良い点
+・無理のない範囲での改善案（あれば）
+`
+    ].join("\n");
+  }
+
+  function buildEvalTextLast7Days(){
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(start.getDate() - 6);
+
+    const days = [];
+    for(let i=0;i<7;i++){
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const calKey = dateKeyCalendar(d);
+
+      const dForKey = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+      const dataKey = dateKeyLocal(dForKey);
+
+      const rec = getRecord(dataKey, false);
+      const has = !!(rec && Array.isArray(rec.entries) && rec.entries.length > 0);
+      const taken = has ? sumTaken(rec.entries) : 0;
+      const target = (has && typeof rec.targetMl === "number" && rec.targetMl > 0) ? rec.targetMl : 0;
+      const pct = (has && target > 0) ? Math.round((taken/target)*100) : null;
+
+      days.push({ d, calKey, dataKey, rec, has, taken, target, pct });
+    }
+
+    const sexText = (state.profile.sex === "female") ? "女性" : "男性";
+    const weightKg = (Number.isFinite(Number(state.profile.weight)) ? Number(state.profile.weight) : "");
+
+    const dayLines = days.map(x => {
+      const ymd = formatYMDSlash(x.d);
+      if(!x.has) return `・${ymd}：記録なし`;
+      return `・${ymd}：${x.target.toLocaleString()}ml / ${x.taken.toLocaleString()}ml / ${x.pct}%`;
+    }).join("\n");
+
+    const logLines = days.map(x => {
+      const ymd = formatYMDSlash(x.d);
+      if(!x.has) return `【${ymd}】記録なし`;
+
+      const entries = x.rec.entries.slice().sort((a,b)=>a.t-b.t);
+      const parts = entries.map(e => `${formatTime(e.t)} +${e.ml}ml`);
+      return `【${ymd}】${parts.join(" / ")}`;
+    }).join("\n");
+
+    return [
+`【水分管理・直近7日間評価の依頼】
+
+以下は、水分管理アプリで記録された「直近7日間」の詳細データです。
+このデータをもとに、水分摂取の“時間的な傾向”や“飲み方のクセ”を評価してください。
+
+▼前提条件
+・性別：${sexText}
+・体重：${weightKg}kg
+・評価期間：${formatYMDSlash(start)} ～ ${formatYMDSlash(now)}（7日間）
+・この評価では「摂取時間」と「達成の仕方」に注目してください。
+・無理に改善を迫る表現は避けてください。
+
+▼日別データ（日付 / 目標摂取量 / 実際摂取量 / 達成率）
+${dayLines}
+
+▼摂取ログ（時刻と量：圧縮形式）
+${logLines}
+
+▼評価してほしい観点
+1. 水分摂取が集中しやすい時間帯
+2. こまめに摂れているか、まとめ飲み傾向か
+3. 達成している日の飲み方の特徴
+4. 日常リズムとの相性（無理がなさそうか）
+
+▼評価時のトーンについて
+・「偏っている」「悪い」などの表現は使わないでください。
+・「〜という傾向があります」「〜という選択肢もあります」のような柔らかい言い回しでお願いします。
+
+▼出力してほしい内容
+・直近7日間の全体的な傾向
+・良い点や自然にできている点
+・生活に無理を加えない範囲での提案
+`
+    ].join("\n");
+  }
+
+  $("copyEvalLongBtn").onclick = async () => {
+    const text = buildEvalTextLongTerm();
+    await copyToClipboardOrShow(text);
+  };
+
+  $("copyEval7dBtn").onclick = async () => {
+    const text = buildEvalTextLast7Days();
+    await copyToClipboardOrShow(text);
   };
 
   renderQuickButtons();
