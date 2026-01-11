@@ -1292,6 +1292,158 @@
     return { avg, median, min, max, stddev };
   }
 
+  // ★追加：スコア関連（評価用テキストに入れるだけ。アプリ動作は変えない）
+  function scoreTierLabel(score){
+    score = Math.round(clamp(score, 0, 100));
+    if(score === 100) return "完璧！";
+    if(score >= 91) return "最高！";
+    if(score >= 76) return "すごい！";
+    if(score >= 51) return "良い感じ！";
+    return "頑張ろう！";
+  }
+
+  // ★追加：長期スコア（量と達成状況のみ。未記録日は評価対象外）
+  function computeLongScoreFromPcts(pcts, achievedDays, recordDays){
+    if(recordDays === 0 || pcts.length === 0) return null;
+
+    // 平均達成率（0〜100に丸め）
+    const avg = pcts.reduce((a,b)=>a+b, 0) / pcts.length;
+    const avgScore = clamp(avg, 0, 100); // そのまま点に
+
+    // 安定性（標準偏差が小さいほど加点）
+    // 0% -> 30点、25% -> 15点、50% -> 0点（下限0）
+    const stats = computeDailyStats(pcts);
+    const sd = (stats.stddev == null) ? 999 : stats.stddev;
+    const stabilityScore = clamp(30 - (sd * (30/50)), 0, 30);
+
+    // 達成した日があるか（達成日割合：最大20点）
+    const achieveRate = (recordDays > 0) ? achievedDays / recordDays : 0;
+    const achieveScore = clamp(achieveRate * 20, 0, 20);
+
+    // 記録の継続（記録日数が増えるほど“判断材料がある”として最大10点）
+    // 1日=2点、3日=6点、5日以上=10点
+    const recordScore = clamp(recordDays * 2, 0, 10);
+
+    const total = Math.round(clamp(avgScore * 0.4 + stabilityScore + achieveScore + recordScore, 0, 100));
+    return total;
+  }
+
+  // ★追加：直近7日スコア（時間帯・飲み方のクセ寄り。未記録日は減点しない）
+  function compute7dScore(days){
+    // days: buildEvalTextLast7Days() で作る {has, rec, taken, target, pct, ...} の配列
+    const recorded = days.filter(x => x.has);
+    if(recorded.length === 0) return null;
+
+    // 1) 達成ベース（平均達成率を軸：最大55点）
+    const pcts = recorded.map(x => {
+      const t = (x.target > 0) ? (x.taken / x.target) * 100 : 0;
+      return t;
+    });
+    const avg = pcts.reduce((a,b)=>a+b, 0) / pcts.length;
+    const base = clamp(avg, 0, 100) * 0.55; // 0〜55
+
+    // 2) “こまめさ”（回数が多いほど最大25点）
+    // 1日あたり平均：1回=5点、2回=12点、3回=18点、4回以上=25点
+    const avgEntries = recorded.reduce((a,x)=>a + (x.rec?.entries?.length || 0), 0) / recorded.length;
+    let freq;
+    if(avgEntries >= 4) freq = 25;
+    else if(avgEntries >= 3) freq = 18;
+    else if(avgEntries >= 2) freq = 12;
+    else if(avgEntries >= 1) freq = 5;
+    else freq = 0;
+
+    // 3) “時間の偏り”（集中していても悪ではないので軽め：最大20点）
+    // 1日の中で時刻が2ブロック以上に分散していれば加点
+    // ブロック: 0-5, 6-11, 12-17, 18-23
+    let spreadDays = 0;
+    for(const x of recorded){
+      const blocks = new Set();
+      const entries = (x.rec?.entries || []).slice();
+      for(const e of entries){
+        const h = new Date(e.t).getHours();
+        const b = (h<=5) ? 0 : (h<=11) ? 1 : (h<=17) ? 2 : 3;
+        blocks.add(b);
+      }
+      if(blocks.size >= 2) spreadDays++;
+    }
+    const spreadRate = spreadDays / recorded.length;
+    const spreadScore = clamp(spreadRate * 20, 0, 20);
+
+    const total = Math.round(clamp(base + freq + spreadScore, 0, 100));
+    return total;
+  }
+
+  // ★追加：まとめ（良いところ / 改善ポイントは無理に探さない）
+  function buildSummaryLong(stats, achievedDays, recordDays, goalNote){
+    const lines = [];
+
+    // 良いところ（無理に増やさない）
+    if(stats.median != null && stats.median >= 90){
+      lines.push("・良い点：中央値が高めで、達成に近い日がしっかりあります。");
+    }else if(stats.avg != null && stats.avg >= 70){
+      lines.push("・良い点：全体として一定の水準を保てている傾向があります。");
+    }else{
+      lines.push("・良い点：記録がある日は、目標に向けた調整ができています。");
+    }
+
+    if(achievedDays >= 1){
+      lines.push("・自然にできている点：目標達成した日があり、再現できる余地があります。");
+    }
+
+    // 改善ポイント（無理に探さない：必要そうな時だけ）
+    if(stats.stddev != null && stats.stddev >= 20 && recordDays >= 3){
+      lines.push("・選択肢：日によって差が出る時は「よく飲める日」を基準に、無理のない幅で整える方法もあります。");
+    }
+
+    if(goalNote){
+      lines.push(goalNote);
+    }
+
+    return lines.join("\n");
+  }
+
+  function buildSummary7d(days, score){
+    const recorded = days.filter(x => x.has);
+    if(recorded.length === 0){
+      return "・記録がないため、傾向の判断が難しいです。";
+    }
+
+    const lines = [];
+
+    // 集中時間帯（記録日の全ログから推定）
+    const counts = [0,0,0,0]; // 0-5,6-11,12-17,18-23
+    for(const x of recorded){
+      for(const e of (x.rec?.entries || [])){
+        const h = new Date(e.t).getHours();
+        const b = (h<=5) ? 0 : (h<=11) ? 1 : (h<=17) ? 2 : 3;
+        counts[b]++;
+      }
+    }
+    const labels = ["深夜〜早朝(0-5)", "朝〜午前(6-11)", "昼〜夕方(12-17)", "夕方〜夜(18-23)"];
+    let maxIdx = 0;
+    for(let i=1;i<counts.length;i++) if(counts[i] > counts[maxIdx]) maxIdx = i;
+
+    lines.push(`・全体傾向：記録がある範囲では、${labels[maxIdx]}に摂取が集まりやすい傾向があります。`);
+
+    // こまめ / まとめ
+    const avgEntries = recorded.reduce((a,x)=>a + (x.rec?.entries?.length || 0), 0) / recorded.length;
+    const avgPerDrink = recorded.reduce((a,x)=>a + (x.taken / Math.max(1,(x.rec?.entries?.length||0))), 0) / recorded.length;
+
+    if(avgEntries >= 3){
+      lines.push("・良い点：1日の中で複数回に分けて摂れている日があり、自然に“分割”ができています。");
+    }else{
+      lines.push("・良い点：まとまった量で記録できており、飲めるタイミングが掴めています。");
+    }
+
+    // 改善ポイント（無理に探さない）
+    // もし平均1回量が大きめなら“選択肢”として少し分ける提案
+    if(avgPerDrink >= 450 && avgEntries <= 2){
+      lines.push("・選択肢：もし体感に合うなら、同じ合計でも少し回数を増やして分ける方法もあります。");
+    }
+
+    return lines.join("\n");
+  }
+
   function buildEvalTextLongTerm(){
     const keys = getAllRecordKeys().filter(k => {
       const rec = state.daily[k];
@@ -1306,6 +1458,33 @@
 
     let start = null;
     let end = null;
+
+    // ★追加：目標妥当性コメント用（手入力の可能性 + 推奨より高い時だけ出す）
+    // 推奨（このアプリ内のベース計算）：体重×係数（男性35 / 女性31）
+    const w = clamp(state.profile.weight, 30, 200);
+    const coef = (state.profile.sex === "male") ? 35 : 31;
+    const recommendedBase = w * coef;
+
+    // 今日の目標（表示中）ではなく「毎日の目標」があればそれを優先して比較（なければ直近記録日の目標平均）
+    let manualOrDailyTarget = (typeof state.profile.defaultTargetMl === "number" && state.profile.defaultTargetMl > 0) ? state.profile.defaultTargetMl : null;
+
+    if(manualOrDailyTarget == null && recordDays > 0){
+      const avgTarget = keys.reduce((acc,k)=>{
+        const rec = state.daily[k];
+        const t = (typeof rec.targetMl === "number" && rec.targetMl > 0) ? rec.targetMl : 0;
+        return acc + t;
+      }, 0) / recordDays;
+      if(Number.isFinite(avgTarget) && avgTarget > 0) manualOrDailyTarget = avgTarget;
+    }
+
+    // 「推奨より高い」かの判定は “ベース” と比較（入浴加算は生活により増えるため、断定しない）
+    let goalNote = "";
+    if(typeof manualOrDailyTarget === "number" && manualOrDailyTarget > 0){
+      if(manualOrDailyTarget > (recommendedBase * 1.25)){
+        goalNote =
+          "・選択肢：現在の目標が、体重から見たベース目安より高めになっている場合は、無理のない範囲に調整するのも一つの方法です。飲み過ぎにもリスクがあるため、体調と相談しながら進めるのが安心です。";
+      }
+    }
 
     for(const k of keys){
       const rec = state.daily[k];
@@ -1338,6 +1517,15 @@
     const achieveRate = (recordDays === 0) ? "—" : `${((achievedDays/recordDays)*100).toFixed(1)} %`;
     const recordHint = `記録日数 ${recordDays}日（全データ日数 ${allDays}日）`;
 
+    // ★追加：スコア
+    const score = computeLongScoreFromPcts(pcts, achievedDays, recordDays);
+    const scoreLine = (score == null)
+      ? "・スコア：—（記録が少ないため判断が難しい）"
+      : `・スコア：${score}点（${scoreTierLabel(score)}）`;
+
+    // ★追加：まとめ
+    const summary = buildSummaryLong(stats, achievedDays, recordDays, goalNote);
+
     return [
 `【水分管理・長期評価の依頼】
 
@@ -1358,6 +1546,10 @@
 ・達成率のばらつき（標準偏差）：${pctStd}
 ・達成率の最大/最小：${pctMinMax}
 ・目標達成率：${achieveRate}（達成 ${achievedDays}日 ÷ 記録 ${recordDays}日）
+${scoreLine}
+
+▼まとめ（良いところ / 改善できるポイント）
+${summary}
 
 ▼評価してほしい観点
 1. 全体的な達成率の水準
@@ -1422,6 +1614,15 @@
       return `【${ymd}】${parts.join(" / ")}`;
     }).join("\n");
 
+    // ★追加：スコア
+    const score = compute7dScore(days);
+    const scoreLine = (score == null)
+      ? "・スコア：—（記録が少ないため判断が難しい）"
+      : `・スコア：${score}点（${scoreTierLabel(score)}）`;
+
+    // ★追加：まとめ
+    const summary = buildSummary7d(days, score);
+
     return [
 `【水分管理・直近7日間評価の依頼】
 
@@ -1440,6 +1641,10 @@ ${dayLines}
 
 ▼摂取ログ（時刻と量：圧縮形式）
 ${logLines}
+
+▼まとめ（良いところ / 改善できるポイント）
+${summary}
+${scoreLine}
 
 ▼評価してほしい観点
 1. 水分摂取が集中しやすい時間帯
