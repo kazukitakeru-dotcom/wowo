@@ -353,24 +353,28 @@
         <button id="closeSyncLogin">閉じる</button>
       </div>
     </div>
-    <div class="modalBody">
+    <!-- 入力欄は必ず <form> の中に置くこと。
+         iPhone / Mac のパスワード保存（iCloudキーチェーン）は submit を合図に
+         「保存しますか？」を出すので、div のままだと候補として出てこない。
+         ログインは type="submit"、それ以外のボタンは type="button" にする。 -->
+    <form class="modalBody" id="sync-login-form" autocomplete="on" style="margin:0">
       <div>
         <label for="sync-email">メールアドレス</label>
-        <input id="sync-email" type="email" inputmode="email" autocomplete="username" style="width:100%">
+        <input id="sync-email" name="email" type="email" inputmode="email" autocomplete="username" style="width:100%">
       </div>
       <div>
         <label for="sync-password">パスワード</label>
-        <input id="sync-password" type="password" autocomplete="current-password" style="width:100%">
+        <input id="sync-password" name="password" type="password" autocomplete="current-password" style="width:100%">
       </div>
       <div class="btns">
-        <button class="primary" id="sync-do-login">ログイン</button>
-        <button id="sync-do-signup">新規登録</button>
+        <button class="primary" id="sync-do-login" type="submit">ログイン</button>
+        <button id="sync-do-signup" type="button">新規登録</button>
       </div>
       <div class="hint" id="sync-login-msg"></div>
       <div class="hint">
         はじめての端末では「新規登録」でアカウントを作り、2台目以降は同じメールとパスワードで「ログイン」します。
       </div>
-    </div>
+    </form>
   </div>
 </div>
 

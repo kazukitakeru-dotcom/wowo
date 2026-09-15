@@ -56,6 +56,17 @@ function sbSaveSession(s) {
 }
 function sbIsLoggedIn() { return !!(sbLoadSession() || {}).refresh_token; }
 
+/* 最後にログインしたメールアドレス。ログイン欄にあらかじめ入れておくためだけのもので、
+   パスワードは持たない（パスワードは端末のパスワード保存に任せる）。
+   キーは他アプリと共通なので、どれか1つで入れれば他アプリの欄にも入っている。 */
+const LAST_EMAIL_KEY = 'sb_last_email';
+function lastLoginEmail() {
+  return (sbLoadSession() || {}).email || localStorage.getItem(LAST_EMAIL_KEY) || '';
+}
+function rememberLoginEmail(email) {
+  try { localStorage.setItem(LAST_EMAIL_KEY, email); } catch (e) {}
+}
+
 function _storeSession(json) {
   if (!json || !json.access_token) return null;
   const prev = sbLoadSession() || {};
@@ -78,7 +89,11 @@ async function _authFetch(path, body) {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(json.error_description || json.msg || json.message || `HTTP ${res.status}`);
+    // 「サーバーに断られた」のか「そもそも届かなかった」のかを呼び出し側が区別できるように
+    // status を付ける。混同するとオフラインなだけでログイン情報を捨ててしまう。
+    const err = new Error(json.error_description || json.msg || json.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return json;
 }
@@ -100,16 +115,41 @@ function sbSignOut() {
 }
 
 // 有効なアクセストークンを返す（期限が近ければ更新する）
+//
+// リフレッシュトークンは1回使うとサーバー側で作り替えられ、古いものはその場で無効になる。
+// 同期は複数のテーブルを Promise.all で同時に取りに行くので、何もしないと
+// 各リクエストが同時に「期限が切れているから更新しよう」と判断して同じトークンを何度も使い、
+// 1本だけ成功して残りは「Invalid Refresh Token: Already Used」で弾かれる。
+// それを失効と誤解してログイン情報を消していたため、
+// アクセストークンの寿命（1時間）を超えて間を空けるたびにログインし直しになっていた。
+// _refreshing で更新は常に1本にまとめ、後続はその結果に相乗りする。
+let _refreshing = null;
+
 async function sbAccessToken() {
   const s = sbLoadSession();
   if (!s || !s.refresh_token) return null;
   if (s.access_token && Date.now() < s.expires_at - 60000) return s.access_token;
+  if (!_refreshing) {
+    _refreshing = _sbRefresh(s.refresh_token).finally(() => { _refreshing = null; });
+  }
+  return _refreshing;
+}
+
+async function _sbRefresh(used) {
   try {
-    const json = await _authFetch('token?grant_type=refresh_token', { refresh_token: s.refresh_token });
+    const json = await _authFetch('token?grant_type=refresh_token', { refresh_token: used });
     return _storeSession(json).access_token;
   } catch (e) {
-    // リフレッシュトークンが失効している＝ログインし直しが必要
-    if (/invalid|expired|not found/i.test(e.message)) sbSaveSession(null);
+    // 同じオリジンの別アプリ／別タブが先に更新していた場合、保存先には既に新しいものが入っている。
+    // これは失効ではないので、ログイン情報は捨てずに新しいほうで1回だけやり直す。
+    const now = sbLoadSession();
+    if (now && now.refresh_token && now.refresh_token !== used) {
+      if (now.access_token && Date.now() < now.expires_at - 60000) return now.access_token;
+      const json = await _authFetch('token?grant_type=refresh_token', { refresh_token: now.refresh_token });
+      return _storeSession(json).access_token;
+    }
+    // サーバーがはっきり断ったときだけログインし直し。通信エラー（status 無し）では捨てない。
+    if (e.status === 400 || e.status === 401) sbSaveSession(null);
     throw e;
   }
 }
@@ -578,7 +618,7 @@ function updateSyncUI() {
 }
 
 function openSyncLogin() {
-  $s('sync-email').value = (sbLoadSession() || {}).email || '';
+  $s('sync-email').value = lastLoginEmail();   // 前に使ったアドレスを入れておく
   $s('sync-password').value = '';
   $s('sync-login-msg').textContent = '';
   $s('syncLoginOverlay').classList.add('open');
@@ -603,6 +643,7 @@ async function submitSyncLogin(mode) {
     } else {
       await sbSignIn(email, password);
     }
+    rememberLoginEmail(email);
     $s('syncLoginOverlay').classList.remove('open');
     updateSyncUI();
     await syncNow({ toast: true });
@@ -615,7 +656,11 @@ window.addEventListener('load', () => {
   const on = (id, fn) => { const el = $s(id); if (el) el.onclick = fn; };
   on('sync-login-btn', openSyncLogin);
   on('closeSyncLogin', () => $s('syncLoginOverlay').classList.remove('open'));
-  on('sync-do-login', () => submitSyncLogin('login'));
+  // ログインは click ではなく form の submit で受ける。
+  // 端末のパスワード保存は submit を合図に「保存しますか？」を出すので、
+  // click で処理してしまうと候補として登録されない。
+  const form = $s('sync-login-form');
+  if (form) form.addEventListener('submit', e => { e.preventDefault(); submitSyncLogin('login'); });
   on('sync-do-signup', () => submitSyncLogin('signup'));
   on('sync-now-btn', () => syncNow({ toast: true }));
   on('sync-rollback-btn', restoreRollback);
