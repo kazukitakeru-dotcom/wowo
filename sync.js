@@ -45,14 +45,22 @@ function sbLoadSession() {
     // これがあるので、共通化のためにログインし直す必要はない。
     if (!raw) {
       const old = localStorage.getItem(LEGACY_SESSION_KEY);
-      if (old) { localStorage.setItem(SESSION_KEY, old); raw = old; }
+      // 引き継いだら古いほうは必ず消す。残すとログアウトした瞬間に古いログイン情報が
+      // ここから復活し、何週間も前の更新トークンを使ってサーバーにログインごと無効にされていた
+      if (old) { localStorage.setItem(SESSION_KEY, old); localStorage.removeItem(LEGACY_SESSION_KEY); raw = old; }
     }
     return JSON.parse(raw || 'null');
   } catch (e) { return null; }
 }
+/* アプリごとに分かれていた頃のログイン情報の置き場所。6アプリは同じオリジンで保存先を共有しているので、
+   どのアプリの古いキーが残っていても、ログアウトや失効のあとに古いログイン情報が復活してしまう。
+   ログインした時もログアウトした時も、全部まとめて消す。 */
+const LEGACY_SESSION_KEYS = ['ironlog_session_v1', 'wannyan_session_v1', 'uruoi_session_v1', 'qest_session_v1', 'kaimono_session_v1'];
+
 function sbSaveSession(s) {
   if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
   else localStorage.removeItem(SESSION_KEY);
+  LEGACY_SESSION_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
 }
 function sbIsLoggedIn() { return !!(sbLoadSession() || {}).refresh_token; }
 
@@ -130,9 +138,26 @@ async function sbAccessToken() {
   if (!s || !s.refresh_token) return null;
   if (s.access_token && Date.now() < s.expires_at - 60000) return s.access_token;
   if (!_refreshing) {
-    _refreshing = _sbRefresh(s.refresh_token).finally(() => { _refreshing = null; });
+    _refreshing = _refreshExclusive().finally(() => { _refreshing = null; });
   }
   return _refreshing;
+}
+
+/* github.io の6アプリは同じオリジンなので、ログイン情報の保存先（sb_session_v1）を共有している。
+   別のタブや別のアプリが同時に同じ更新トークンを使うと、Supabase はそれを「使い回し」とみなし、
+   そのログインを丸ごと無効にすることがある（以後どのアプリでも Invalid Refresh Token: Already Used）。
+   Web Locks でオリジン全体の更新を1本ずつに並べ、鍵が取れた時点で保存先を読み直す。
+   待っている間に誰かが更新を済ませていれば、それをそのまま使う。 */
+function _refreshExclusive() {
+  const run = async () => {
+    const s = sbLoadSession();
+    if (!s || !s.refresh_token) throw new Error('ログインしていません');
+    if (s.access_token && Date.now() < s.expires_at - 60000) return s.access_token;
+    return _sbRefresh(s.refresh_token);
+  };
+  return (navigator.locks && navigator.locks.request)
+    ? navigator.locks.request('sb-token-refresh', run)
+    : run();
 }
 
 async function _sbRefresh(used) {
@@ -145,11 +170,22 @@ async function _sbRefresh(used) {
     const now = sbLoadSession();
     if (now && now.refresh_token && now.refresh_token !== used) {
       if (now.access_token && Date.now() < now.expires_at - 60000) return now.access_token;
-      const json = await _authFetch('token?grant_type=refresh_token', { refresh_token: now.refresh_token });
-      return _storeSession(json).access_token;
+      try {
+        const json = await _authFetch('token?grant_type=refresh_token', { refresh_token: now.refresh_token });
+        return _storeSession(json).access_token;
+      } catch (e2) {
+        e = e2;   // やり直しも断られたら、下で同じように扱う
+      }
     }
     // サーバーがはっきり断ったときだけログインし直し。通信エラー（status 無し）では捨てない。
-    if (e.status === 400 || e.status === 401) sbSaveSession(null);
+    // 以前は「やり直し」が断られたときにここを通らず、使えないログイン情報が残ったまま
+    // 同期のたびに Invalid Refresh Token: Already Used が出続けていた。
+    if (e.status === 400 || e.status === 401) {
+      sbSaveSession(null);
+      const err = new Error('ログインの有効期限が切れました。もう一度ログインしてください');
+      err.status = e.status;
+      throw err;
+    }
     throw e;
   }
 }
