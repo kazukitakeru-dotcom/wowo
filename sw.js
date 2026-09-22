@@ -4,7 +4,7 @@
 // 上げないと古いキャッシュが配られて、変更が端末に届かない。
 // 新しいファイルを足したら ASSETS にも追加する。
 // ============================================================================
-const CACHE_NAME = 'uruoi-v8';
+const CACHE_NAME = 'uruoi-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -15,8 +15,9 @@ const ASSETS = [
   './icons/icon-512.png',
 ];
 
+// インストール時は cache: 'reload' で必ず取り直す。通すと新しい版のキャッシュに古いファイルが入る
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))));
   self.skipWaiting();
 });
 

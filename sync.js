@@ -763,3 +763,40 @@ window.addEventListener('load', () => {
   updateSyncUI();
   scheduleSync(1200);
 });
+
+// ========== 新しい版への自動切り替え ==========
+// ホーム画面のアプリは開きっぱなしで何日も読み直されないことがあり、新しい版を配っても
+// 古い画面のまま同期し続けていた（古い版は他の端末の変更を上書きしてしまう）。
+//   - 画面に戻るたびに新しい版が無いか確認する
+//   - 新しい版が引き継いだら1回だけ読み直す。ただし入力中（文字の入力欄にカーソルがある、
+//     入力画面やダイアログが開いている）の間は、書きかけが消えないよう閉じるまで待つ
+(function autoUpdate() {
+  if (!('serviceWorker' in navigator)) return;
+  const hadController = !!navigator.serviceWorker.controller;   // 初めて入るときは読み直さない
+  let pending = false;
+
+  function busy() {
+    const a = document.activeElement;
+    if (a && (a.isContentEditable || /^(TEXTAREA|SELECT)$/.test(a.tagName) ||
+        (a.tagName === 'INPUT' && !/^(button|submit|reset|checkbox|radio|range|color|file)$/i.test(a.type)))) return true;
+    return [...document.querySelectorAll('.overlay, dialog[open]')].some(el => {
+      if (!el.getClientRects().length) return false;
+      const cs = getComputedStyle(el);
+      // 透明度は開く動きの途中の値になるので見ない。押せる状態かどうかで判断する
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.pointerEvents !== 'none';
+    });
+  }
+  function tryReload() {
+    if (busy()) { setTimeout(tryReload, 2000); return; }
+    location.reload();
+  }
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || pending) return;
+    pending = true;
+    tryReload();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
+  });
+})();
