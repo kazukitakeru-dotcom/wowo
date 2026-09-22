@@ -257,6 +257,8 @@ function _emptySyncState() {
     days: {},     // 'YYYY-MM-DD' -> 目標のハッシュ
     docHash: {},  // 設定の項目 -> ハッシュ
     rev: {},      // 設定の項目 -> 最後にこの端末で変えた時刻(ms)
+    docBase: {},  // 前回そろえた時点のプロフィール・ボタンの量（項目ごとに合わせるための控え）
+    stateAt: null, // 前回読んだ uruoi_state の updated_at（書き込みの衝突を見分ける）
     lastSyncedAt: null,
   };
 }
@@ -383,6 +385,7 @@ async function _pull(sync) {
   ]);
 
   const remoteDoc = (remoteState && remoteState[0] && remoteState[0].doc) || null;
+  if (remoteState && remoteState[0]) sync.stateAt = remoteState[0].updated_at;
   if (!remoteEntries.length && !remoteDays.length && !remoteDoc) return;
 
   // これから端末のデータを書き換えるので、直前の状態を控えておく
@@ -475,20 +478,55 @@ async function _pull(sync) {
 
 // 設定と水知識のマージ。
 // ここがこのアプリで一番間違えやすいところなので、項目ごとに規則を分けている。
+// jsonb はキー順を保たないので、比べるときはキーを並べ替えてから
+function _stableJson(v) {
+  if (Array.isArray(v)) return '[' + v.map(_stableJson).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + _stableJson(v[k])).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+const _same = (a, b) => _stableJson(a) === _stableJson(b);
+
 function _mergeDoc(sync, st, remote) {
   const rRev = (remote.rev && typeof remote.rev === 'object') ? remote.rev : {};
   const takeRemote = (field) => (Number(rRev[field]) || 0) > (Number(sync.rev[field]) || 0);
 
-  // --- 後に変えた方が勝つ項目 ---
-  if (remote.profile && takeRemote('profile')) {
-    st.profile = remote.profile;
-    sync.rev.profile = Number(rRev.profile) || 0;
-    sync.docHash.profile = _hash(JSON.stringify(st.profile));
+  // --- プロフィール・ボタンの量は、項目（ボタン）1つずつ合わせる ---
+  // 丸ごと「後に変えた方」にしていたため、2台で別々のボタンの量や別々の項目を変えると
+  // 片方の変更が消えていた。まだ送っていないこの端末の変更も、相手の時刻が新しいだけで消えていた。
+  // 前回そろえた姿（docBase）と比べ、片方だけ変えた項目はその値、両方で変えた項目だけ後に変えた方。
+  if (!sync.docBase) sync.docBase = {};
+  const pick = (b, l, r, remoteWins) => {
+    if (_same(l, r)) return l;
+    if (b !== undefined && _same(l, b)) return r;
+    if (b !== undefined && _same(r, b)) return l;
+    return remoteWins ? r : l;
+  };
+  if (remote.profile && typeof remote.profile === 'object') {
+    const b = sync.docBase.profile, l = st.profile || {}, r = remote.profile;
+    const out = {};
+    new Set([...Object.keys(l), ...Object.keys(r)]).forEach(k => {
+      if (!(k in r)) { out[k] = l[k]; return; }
+      if (!(k in l)) { out[k] = r[k]; return; }
+      out[k] = pick(b ? b[k] : undefined, l[k], r[k], takeRemote('profile'));
+    });
+    st.profile = out;
+    sync.docBase.profile = JSON.parse(JSON.stringify(r));
+    sync.docHash.profile = _hash(_stableJson(r));      // 手元がサーバーと違えば送信側で送る
+    sync.rev.profile = Math.max(Number(sync.rev.profile) || 0, Number(rRev.profile) || 0);
   }
-  if (Array.isArray(remote.quickAdds) && takeRemote('quickAdds')) {
-    st.quickAdds = remote.quickAdds;
-    sync.rev.quickAdds = Number(rRev.quickAdds) || 0;
-    sync.docHash.quickAdds = _hash(JSON.stringify(st.quickAdds));
+  if (Array.isArray(remote.quickAdds)) {
+    const b = sync.docBase.quickAdds, l = Array.isArray(st.quickAdds) ? st.quickAdds : [], r = remote.quickAdds;
+    const n = Math.max(l.length, r.length);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      if (i >= r.length) { out.push(l[i]); continue; }
+      if (i >= l.length) { out.push(r[i]); continue; }
+      out.push(pick(Array.isArray(b) ? b[i] : undefined, l[i], r[i], takeRemote('quickAdds')));
+    }
+    st.quickAdds = out;
+    sync.docBase.quickAdds = r.slice();
+    sync.docHash.quickAdds = _hash(_stableJson(r));
+    sync.rev.quickAdds = Math.max(Number(sync.rev.quickAdds) || 0, Number(rRev.quickAdds) || 0);
   }
 
   // --- 区切り時間は「いつから何時」の履歴なので、両端末の分を時系列に合流させる ---
@@ -507,7 +545,7 @@ function _mergeDoc(sync, st, remote) {
       .map(r => ({ fromTs: Number(r.fromTs) || 0, hour: Math.max(0, Math.min(23, Number(r.hour) || 0)) }))
       .sort((a, b) => a.fromTs - b.fromTs);
     if (takeRemote('settings')) sync.rev.settings = Number(rRev.settings) || 0;
-    sync.docHash.settings = _hash(JSON.stringify(st.settings));
+    sync.docHash.settings = _hash(_stableJson(st.settings));
   }
 
   // --- 水知識は「集めたもの」なので、消える方向のマージは絶対にしない ---
@@ -531,7 +569,7 @@ function _mergeDoc(sync, st, remote) {
       st.knowledge.activeSeries = rk.activeSeries;
       sync.rev.activeSeries = Number(rRev.activeSeries) || 0;
     }
-    sync.docHash.knowledge = _hash(JSON.stringify(st.knowledge));
+    sync.docHash.knowledge = _hash(_stableJson(st.knowledge));
   }
 }
 
@@ -591,27 +629,42 @@ async function _push(sync) {
   };
   let docChanged = false;
   for (const [name, value] of Object.entries(fields)) {
-    const h = _hash(JSON.stringify(value ?? null));
+    const h = _hash(_stableJson(value ?? null));
     if (sync.docHash[name] === h) continue;
     sync.docHash[name] = h;
     sync.rev[name] = now;
     docChanged = true;
   }
-  if (docChanged) {
-    await _rest('uruoi_state?on_conflict=user_id', {
-      method: 'POST',
-      body: [{
-        user_id: userId,
-        doc: {
-          profile: st.profile,
-          quickAdds: st.quickAdds,
-          settings: st.settings,
-          knowledge: st.knowledge,
-          rev: sync.rev,
-        },
-      }],
-      prefer: 'resolution=merge-duplicates,return=minimal',
-    });
+  // 読んでから書くまでに他の端末が書いていたら、読み直して合わせてから書き直す（最大3回）。
+  // 以前は無条件で上書きしていたので、その間の相手の変更が消えることがあった。
+  for (let attempt = 0; docChanged && attempt < 3; attempt++) {
+    const doc = { profile: st.profile, quickAdds: st.quickAdds, settings: st.settings, knowledge: st.knowledge, rev: sync.rev };
+    let rows;
+    if (sync.stateAt) {
+      rows = await _rest(`uruoi_state?user_id=eq.${userId}&updated_at=eq.${encodeURIComponent(sync.stateAt)}`, {
+        method: 'PATCH', body: { doc }, prefer: 'return=representation' });
+    } else {
+      rows = await _rest('uruoi_state?on_conflict=user_id', {
+        method: 'POST', body: [{ user_id: userId, doc }], prefer: 'resolution=merge-duplicates,return=representation' });
+    }
+    if (rows && rows[0]) {
+      sync.stateAt = rows[0].updated_at;
+      sync.docBase = { profile: JSON.parse(JSON.stringify(st.profile || {})), quickAdds: (st.quickAdds || []).slice() };
+      break;
+    }
+    // 他の端末が先に書いていた → 読み直して合わせる
+    const fresh = await _rest('uruoi_state?select=doc,updated_at&limit=1');
+    if (!fresh || !fresh[0]) { sync.stateAt = null; continue; }
+    sync.stateAt = fresh[0].updated_at;
+    _mergeDoc(sync, st, fresh[0].doc || {});
+    app().commit(); app().rerender();
+    docChanged = false;
+    for (const [name, value] of Object.entries({ profile: st.profile, quickAdds: st.quickAdds, settings: st.settings,
+                                                  knowledge: st.knowledge, activeSeries: (st.knowledge || {}).activeSeries })) {
+      const h = _hash(_stableJson(value ?? null));
+      if (sync.docHash[name] === h) continue;
+      sync.docHash[name] = h; sync.rev[name] = Date.now(); docChanged = true;
+    }
   }
 }
 
